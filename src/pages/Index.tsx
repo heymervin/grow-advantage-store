@@ -2,7 +2,6 @@ import { Header } from "@/components/Header";
 import { ServicesGrid } from "@/components/ServicesGrid";
 import { Testimonial } from "@/components/Testimonial";
 import { BottomCTA } from "@/components/BottomCTA";
-import { Footer } from "@/components/Footer";
 
 const Index = () => {
   return (
@@ -11,7 +10,6 @@ const Index = () => {
       <ServicesGrid />
       <Testimonial />
       <BottomCTA />
-      <Footer />
     </div>
   );
 };

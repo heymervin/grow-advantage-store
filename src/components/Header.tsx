@@ -2,30 +2,20 @@ import { motion } from "framer-motion";
 
 export const Header = () => {
   return (
-    <section className="py-16 md:py-24">
-      <div className="container max-w-4xl mx-auto px-4 text-center">
+    <section className="py-12 md:py-16">
+      <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="bg-card rounded-2xl p-8 md:p-12 shadow-card"
+          className="text-center"
         >
-          <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground mb-4"
-          >
+          <h1 className="text-3xl md:text-4xl lg:text-5xl font-extrabold text-foreground mb-3">
             Add-On Services
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
-          >
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
             Your big ideas deserve serious ops. We've got you.
-          </motion.p>
+          </p>
         </motion.div>
       </div>
     </section>
