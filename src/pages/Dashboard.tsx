@@ -180,7 +180,7 @@ const Dashboard = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{item.label}</p>
-                    <p className="text-sm text-foreground leading-relaxed">{item.value || ""}</p>
+                    <p className="text-sm text-foreground leading-relaxed">{item.value || "—"}</p>
                   </div>
                 </div>
               );
