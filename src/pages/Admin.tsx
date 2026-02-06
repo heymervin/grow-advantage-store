@@ -9,6 +9,7 @@ import {
   BarChart3, Clock, DollarSign, FileText, Megaphone, Palette, PenTool,
   Send, Sparkles, ThumbsUp, Wand2, Monitor, Smartphone, Database,
   CloudLightning, Gem, Crown, Flame, Compass, Puzzle, RefreshCw,
+  ArrowLeft,
   type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -91,11 +92,11 @@ const IconPicker = ({ value, onChange }: { value: string; onChange: (v: string) 
 
   return (
     <div ref={ref} className="relative">
-      <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Icon</label>
+      <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Icon</label>
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-3 bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none hover:border-primary/40 transition-colors text-left"
+        className="w-full flex items-center gap-3 bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none hover:border-primary/40 transition-colors text-left shadow-sm"
       >
         {SelectedIcon ? (
           <div className="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center shrink-0">
@@ -223,7 +224,7 @@ const AdminGate = ({ onAuth }: { onAuth: () => void }) => {
           onChange={(e) => { setPw(e.target.value); setError(false); }}
           onKeyDown={(e) => { if (e.key === "Enter") verify(); }}
           placeholder="Password"
-          className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 mb-3 outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+          className="w-full bg-white border border-gray-300 rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 mb-3 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
         />
         {error && <p className="text-xs text-destructive mb-3">Incorrect password. Try again.</p>}
         <Button className="w-full" onClick={verify} disabled={checking}>
@@ -240,14 +241,14 @@ const Field = ({ label, value, onChange, placeholder, multiline = false }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean;
 }) => (
   <div>
-    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">{label}</label>
+    <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">{label}</label>
     {multiline ? (
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20 resize-y"
+        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 resize-y shadow-sm transition-colors"
       />
     ) : (
       <input
@@ -255,7 +256,7 @@ const Field = ({ label, value, onChange, placeholder, multiline = false }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/20"
+        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
       />
     )}
   </div>
@@ -326,31 +327,100 @@ const ClientsTab = () => {
 
   if (editing) {
     return (
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-foreground">{editing.id ? "Edit Client" : "New Client"}</h3>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
+        {/* Header with breadcrumb */}
+        <div className="flex items-center justify-between pb-4 border-b border-border">
+          <div>
+            <button
+              onClick={() => setEditing(null)}
+              className="text-xs text-muted-foreground hover:text-foreground mb-1.5 flex items-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3 h-3" /> Back to Clients
+            </button>
+            <h3 className="text-xl font-extrabold text-foreground">
+              {editing.id ? "Edit Client" : "New Client"}
+              {editing.name && <span className="text-muted-foreground font-normal ml-2">— {editing.name}</span>}
+            </h3>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Slug (URL parameter)" value={editing.slug} onChange={(v) => upd("slug", v)} placeholder="e.g. imogen" />
-          <Field label="Client Name" value={editing.name} onChange={(v) => upd("name", v)} placeholder="e.g. Imogen" />
-          <Field label="Integrator Name" value={editing.integrator_name} onChange={(v) => upd("integrator_name", v)} placeholder="e.g. Chrissy Elle" />
-          <Field label="Primary Comms Channel" value={editing.primary_comms_channel} onChange={(v) => upd("primary_comms_channel", v)} placeholder="e.g. Slack + Voxer" />
-          <Field label="Next Strategy Meeting" value={editing.next_strategy_meeting} onChange={(v) => upd("next_strategy_meeting", v)} placeholder="e.g. March 5, 2026 — 10:00am" />
+
+        {/* Section 1: Client Details */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-accent-light flex items-center justify-center">
+              <Users className="w-3.5 h-3.5 text-primary" />
+            </div>
+            Client Details
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Slug (URL parameter)" value={editing.slug} onChange={(v) => upd("slug", v)} placeholder="e.g. imogen" />
+            <Field label="Client Name" value={editing.name} onChange={(v) => upd("name", v)} placeholder="e.g. Imogen" />
+            <Field label="Integrator Name" value={editing.integrator_name} onChange={(v) => upd("integrator_name", v)} placeholder="e.g. Chrissy Elle" />
+            <div>
+              <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Primary Comms Channel</label>
+              <select
+                value={editing.primary_comms_channel}
+                onChange={(e) => upd("primary_comms_channel", e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
+              >
+                <option value="">Select channel…</option>
+                <option value="Slack">Slack</option>
+                <option value="Slack + Voxer">Slack + Voxer</option>
+                <option value="Slack + WhatsApp">Slack + WhatsApp</option>
+                <option value="Voxer">Voxer</option>
+                <option value="WhatsApp">WhatsApp</option>
+                <option value="Email">Email</option>
+                <option value="Microsoft Teams">Microsoft Teams</option>
+                <option value="Asana">Asana</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Next Strategy Meeting</label>
+              <input
+                type="datetime-local"
+                value={editing.next_strategy_meeting}
+                onChange={(e) => upd("next_strategy_meeting", e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
+              />
+            </div>
+          </div>
         </div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide pt-2">This Month at a Glance</p>
-        <div className="grid grid-cols-1 gap-4">
-          <Field label="Top 3 Outcomes" value={editing.this_month_outcomes} onChange={(v) => upd("this_month_outcomes", v)} placeholder="Key outcomes" multiline />
-          <Field label="Key Deliverables" value={editing.this_month_deliverables} onChange={(v) => upd("this_month_deliverables", v)} placeholder="What was delivered" multiline />
-          <Field label="Process Improvements" value={editing.this_month_improvements} onChange={(v) => upd("this_month_improvements", v)} placeholder="What improved" multiline />
-          <Field label="Risks / Constraints" value={editing.this_month_risks} onChange={(v) => upd("this_month_risks", v)} placeholder="What to watch" multiline />
-          <Field label="Current Focus" value={editing.this_month_focus} onChange={(v) => upd("this_month_focus", v)} placeholder="Main focus area" multiline />
+
+        {/* Section 2: This Month at a Glance */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-accent-light flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+            </div>
+            This Month at a Glance
+          </h4>
+          <div className="grid grid-cols-1 gap-4">
+            <Field label="Top 3 Outcomes" value={editing.this_month_outcomes} onChange={(v) => upd("this_month_outcomes", v)} placeholder="Key outcomes" multiline />
+            <Field label="Key Deliverables" value={editing.this_month_deliverables} onChange={(v) => upd("this_month_deliverables", v)} placeholder="What was delivered" multiline />
+            <Field label="Process Improvements" value={editing.this_month_improvements} onChange={(v) => upd("this_month_improvements", v)} placeholder="What improved" multiline />
+            <Field label="Risks / Constraints" value={editing.this_month_risks} onChange={(v) => upd("this_month_risks", v)} placeholder="What to watch" multiline />
+            <Field label="Current Focus" value={editing.this_month_focus} onChange={(v) => upd("this_month_focus", v)} placeholder="Main focus area" multiline />
+          </div>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? "Saving…" : "Save Client"}
-        </Button>
-      </div>
+
+        {/* Sticky save bar */}
+        <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border py-3 -mx-4 px-4 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(null)} className="text-muted-foreground">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save Client"}
+          </Button>
+        </div>
+      </motion.div>
     );
   }
 
@@ -525,26 +595,36 @@ const SnapshotsTab = () => {
       </div>
 
       {creating && (
-        <div className="bg-card rounded-xl border border-border p-5 space-y-4">
-          <h3 className="text-base font-bold text-foreground">Create Monthly Snapshot</h3>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm"
+        >
+          <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-accent-light flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5 text-primary" />
+            </div>
+            Create Monthly Snapshot
+          </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Client</label>
+              <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Client</label>
               <select
                 value={newClientId}
                 onChange={(e) => setNewClientId(e.target.value)}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40"
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
               >
                 <option value="">Select client…</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Month</label>
+              <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Month</label>
               <select
                 value={newMonthLabel}
                 onChange={(e) => handleMonthSelect(e.target.value)}
-                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40"
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
               >
                 <option value="">Select month…</option>
                 {MONTH_OPTIONS.map((o) => (
@@ -560,7 +640,7 @@ const SnapshotsTab = () => {
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setCreating(false)}>Cancel</Button>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {loading ? (
@@ -670,59 +750,115 @@ const AddonsTab = () => {
 
   if (editing) {
     return (
-      <div className="space-y-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-bold text-foreground">{editing.id ? "Edit Add-on" : "New Add-on"}</h3>
-          <Button variant="ghost" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
+        {/* Header with breadcrumb */}
+        <div className="flex items-center justify-between pb-4 border-b border-border">
+          <div>
+            <button
+              onClick={() => setEditing(null)}
+              className="text-xs text-muted-foreground hover:text-foreground mb-1.5 flex items-center gap-1 transition-colors"
+            >
+              <ArrowLeft className="w-3 h-3" /> Back to Add-ons
+            </button>
+            <h3 className="text-xl font-extrabold text-foreground">
+              {editing.id ? "Edit Add-on" : "New Add-on"}
+              {editing.title && <span className="text-muted-foreground font-normal ml-2">— {editing.title}</span>}
+            </h3>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => setEditing(null)}>Cancel</Button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Title" value={editing.title} onChange={(v) => upd("title", v)} placeholder="Service title" />
-          <Field label="Price" value={editing.price} onChange={(v) => upd("price", v)} placeholder="e.g. $497 AUD" />
-          <Field label="Timeline" value={editing.timeline} onChange={(v) => upd("timeline", v)} placeholder="e.g. 60 Minutes" />
-          <IconPicker value={editing.icon_name} onChange={(v) => upd("icon_name", v)} />
-          <Field label="Badge" value={editing.badge} onChange={(v) => upd("badge", v)} placeholder="e.g. VIP, MOST POPULAR" />
-          <Field label="CTA Button Text" value={editing.cta_text} onChange={(v) => upd("cta_text", v)} placeholder="e.g. Book Now" />
-          <Field label="CTA Link" value={editing.cta_link} onChange={(v) => upd("cta_link", v)} placeholder="https://..." />
-          <Field label="Sort Order" value={String(editing.sort_order)} onChange={(v) => upd("sort_order", parseInt(v) || 0)} placeholder="0" />
+
+        {/* Section 1: Service Info */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-accent-light flex items-center justify-center">
+              <ShoppingBag className="w-3.5 h-3.5 text-primary" />
+            </div>
+            Service Info
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="Title" value={editing.title} onChange={(v) => upd("title", v)} placeholder="Service title" />
+            <Field label="Price" value={editing.price} onChange={(v) => upd("price", v)} placeholder="e.g. $497 AUD" />
+            <Field label="Timeline" value={editing.timeline} onChange={(v) => upd("timeline", v)} placeholder="e.g. 60 Minutes" />
+            <IconPicker value={editing.icon_name} onChange={(v) => upd("icon_name", v)} />
+            <Field label="Badge" value={editing.badge} onChange={(v) => upd("badge", v)} placeholder="e.g. VIP, MOST POPULAR" />
+            <Field label="Sort Order" value={String(editing.sort_order)} onChange={(v) => upd("sort_order", parseInt(v) || 0)} placeholder="0" />
+          </div>
         </div>
-        <Field label="Short Description" value={editing.short_description} onChange={(v) => upd("short_description", v)} placeholder="Brief card description" multiline />
-        <Field label="Full Description" value={editing.description} onChange={(v) => upd("description", v)} placeholder="Detailed description" multiline />
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Features (one per line)</label>
-          <textarea
-            value={featuresStr}
-            onChange={(e) => upd("features", e.target.value.split("\n"))}
-            placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-            rows={4}
-            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/40 resize-y"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">What You Get (one per line)</label>
-          <textarea
-            value={whatYouGetStr}
-            onChange={(e) => upd("what_you_get", e.target.value.split("\n"))}
-            placeholder="Benefit 1&#10;Benefit 2"
-            rows={3}
-            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary/40 resize-y"
-          />
-        </div>
-        <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-            <input
-              type="checkbox"
-              checked={editing.is_active}
-              onChange={(e) => upd("is_active", e.target.checked)}
-              className="rounded border-border"
+
+        {/* Section 2: Descriptions */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-accent-light flex items-center justify-center">
+              <FileText className="w-3.5 h-3.5 text-primary" />
+            </div>
+            Descriptions & Content
+          </h4>
+          <Field label="Short Description" value={editing.short_description} onChange={(v) => upd("short_description", v)} placeholder="Brief card description" multiline />
+          <Field label="Full Description" value={editing.description} onChange={(v) => upd("description", v)} placeholder="Detailed description" multiline />
+          <div>
+            <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Features (one per line)</label>
+            <textarea
+              value={featuresStr}
+              onChange={(e) => upd("features", e.target.value.split("\n"))}
+              placeholder={"Feature 1\nFeature 2\nFeature 3"}
+              rows={4}
+              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 resize-y shadow-sm transition-colors"
             />
-            Active (visible in store)
-          </label>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">What You Get (one per line)</label>
+            <textarea
+              value={whatYouGetStr}
+              onChange={(e) => upd("what_you_get", e.target.value.split("\n"))}
+              placeholder={"Benefit 1\nBenefit 2"}
+              rows={3}
+              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 resize-y shadow-sm transition-colors"
+            />
+          </div>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="gap-2">
-          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-          {saving ? "Saving…" : "Save Add-on"}
-        </Button>
-      </div>
+
+        {/* Section 3: CTA & Settings */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4 shadow-sm">
+          <h4 className="text-sm font-bold text-foreground flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-accent-light flex items-center justify-center">
+              <Settings className="w-3.5 h-3.5 text-primary" />
+            </div>
+            CTA & Settings
+          </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Field label="CTA Button Text" value={editing.cta_text} onChange={(v) => upd("cta_text", v)} placeholder="e.g. Book Now" />
+            <Field label="CTA Link" value={editing.cta_link} onChange={(v) => upd("cta_link", v)} placeholder="https://..." />
+          </div>
+          <div className="flex items-center gap-3 pt-2">
+            <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editing.is_active}
+                onChange={(e) => upd("is_active", e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              Active (visible in store)
+            </label>
+          </div>
+        </div>
+
+        {/* Sticky save bar */}
+        <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm border-t border-border py-3 -mx-4 px-4 flex items-center justify-between">
+          <Button variant="ghost" size="sm" onClick={() => setEditing(null)} className="text-muted-foreground">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={saving} className="gap-2">
+            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            {saving ? "Saving…" : "Save Add-on"}
+          </Button>
+        </div>
+      </motion.div>
     );
   }
 
