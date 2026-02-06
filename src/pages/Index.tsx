@@ -1,12 +1,12 @@
 import { Header } from "@/components/Header";
-import { ServicesGrid } from "@/components/ServicesGrid";
+import { CompactServicesGrid } from "@/components/CompactServicesGrid";
 
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <ServicesGrid />
+      <CompactServicesGrid />
     </div>
   );
 };
