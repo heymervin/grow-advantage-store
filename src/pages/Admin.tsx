@@ -466,20 +466,9 @@ const ClientsTab = () => {
 // ══════════════════════════════════════════════
 // SNAPSHOTS TAB
 // ══════════════════════════════════════════════
-// Generate month options from Jan 2025 to Dec 2028
-const MONTH_OPTIONS: { label: string; slug: string }[] = (() => {
-  const months = ["January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"];
-  const options: { label: string; slug: string }[] = [];
-  for (let year = 2025; year <= 2028; year++) {
-    for (const m of months) {
-      const label = `${m} ${year}`;
-      const slug = `${m.toLowerCase()}-${year}`;
-      options.push({ label, slug });
-    }
-  }
-  return options;
-})();
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"];
+const YEAR_OPTIONS = [2025, 2026, 2027, 2028, 2029, 2030];
 
 const SnapshotsTab = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -487,9 +476,13 @@ const SnapshotsTab = () => {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [newClientId, setNewClientId] = useState("");
-  const [newMonthLabel, setNewMonthLabel] = useState("");
-  const [newMonthSlug, setNewMonthSlug] = useState("");
+  const [newMonth, setNewMonth] = useState("");
+  const [newYear, setNewYear] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Derived values from month + year
+  const newMonthLabel = newMonth && newYear ? `${newMonth} ${newYear}` : "";
+  const newMonthSlug = newMonth && newYear ? `${newMonth.toLowerCase()}-${newYear}` : "";
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -517,8 +510,8 @@ const SnapshotsTab = () => {
       toast.success("Snapshot created");
       setCreating(false);
       setNewClientId("");
-      setNewMonthLabel("");
-      setNewMonthSlug("");
+      setNewMonth("");
+      setNewYear("");
       load();
     } catch (err: unknown) {
       toast.error("Failed to create snapshot", { description: (err as Error).message });
@@ -579,12 +572,6 @@ const SnapshotsTab = () => {
     }
   };
 
-  const handleMonthSelect = (label: string) => {
-    setNewMonthLabel(label);
-    const match = MONTH_OPTIONS.find((o) => o.label === label);
-    setNewMonthSlug(match?.slug || label.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, ""));
-  };
-
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -607,7 +594,7 @@ const SnapshotsTab = () => {
             </div>
             Create Monthly Snapshot
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Client</label>
               <select
@@ -622,19 +609,32 @@ const SnapshotsTab = () => {
             <div>
               <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Month</label>
               <select
-                value={newMonthLabel}
-                onChange={(e) => handleMonthSelect(e.target.value)}
+                value={newMonth}
+                onChange={(e) => setNewMonth(e.target.value)}
                 className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
               >
                 <option value="">Select month…</option>
-                {MONTH_OPTIONS.map((o) => (
-                  <option key={o.slug} value={o.label}>{o.label}</option>
+                {MONTH_NAMES.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground/80 mb-1.5 block">Year</label>
+              <select
+                value={newYear}
+                onChange={(e) => setNewYear(e.target.value)}
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary focus:ring-2 focus:ring-primary/30 shadow-sm transition-colors"
+              >
+                <option value="">Select year…</option>
+                {YEAR_OPTIONS.map((y) => (
+                  <option key={y} value={String(y)}>{y}</option>
                 ))}
               </select>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button onClick={handleCreate} disabled={saving || !newClientId || !newMonthLabel} size="sm" className="gap-1">
+            <Button onClick={handleCreate} disabled={saving || !newClientId || !newMonth || !newYear} size="sm" className="gap-1">
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Create
             </Button>
@@ -668,7 +668,8 @@ const SnapshotsTab = () => {
                   </p>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" asChild><a href={`/snapshot?client=${clientInfo?.slug || ""}&month=${snap.month_slug}`} target="_blank" rel="noopener noreferrer"><ExternalLink className="w-4 h-4" /></a></Button></TooltipTrigger><TooltipContent><p>View snapshot</p></TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" asChild><a href={`/snapshot?client=${clientInfo?.slug || ""}&month=${snap.month_slug}&edit=true`} target="_blank" rel="noopener noreferrer"><Pencil className="w-4 h-4" /></a></Button></TooltipTrigger><TooltipContent><p>Edit snapshot</p></TooltipContent></Tooltip>
+                  <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" asChild><a href={`/snapshot?client=${clientInfo?.slug || ""}&month=${snap.month_slug}`} target="_blank" rel="noopener noreferrer"><Eye className="w-4 h-4" /></a></Button></TooltipTrigger><TooltipContent><p>View snapshot</p></TooltipContent></Tooltip>
                   <TipButton label="Duplicate as new month" onClick={() => handleDuplicate(snap)}><Copy className="w-4 h-4" /></TipButton>
                   <TipButton label="Delete snapshot" onClick={() => handleDelete(snap.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></TipButton>
                 </div>
@@ -893,6 +894,7 @@ const AddonsTab = () => {
                 <p className="text-xs text-muted-foreground">{a.price} · {a.timeline}</p>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" asChild><a href="/addons" target="_blank" rel="noopener noreferrer"><Eye className="w-4 h-4" /></a></Button></TooltipTrigger><TooltipContent><p>Preview add-ons store</p></TooltipContent></Tooltip>
                 <TipButton label="Edit add-on" onClick={() => setEditing(a)}><Pencil className="w-4 h-4" /></TipButton>
                 <TipButton label="Delete add-on" onClick={() => handleDelete(a.id)} className="text-destructive hover:text-destructive"><Trash2 className="w-4 h-4" /></TipButton>
               </div>
