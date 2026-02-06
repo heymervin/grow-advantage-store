@@ -20,7 +20,7 @@ const PortalNav = () => {
   } else if (path === "/snapshot") {
     breadcrumbs.push({ label: "Dashboard", href: `/dashboard?client=${clientSlug}` });
     const month = searchParams.get("month") || "";
-    breadcrumbs.push({ label: `Snapshot${month ? ` — ${month.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase())}` : ""}` });
+    breadcrumbs.push({ label: `Snapshot${month ? ` \u2014 ${month.replace("-", " ").replace(/\\b\\w/g, (c) => c.toUpperCase())}` : ""}` });
   } else if (path === "/addons") {
     if (clientSlug) {
       breadcrumbs.push({ label: "Dashboard", href: `/dashboard?client=${clientSlug}` });
