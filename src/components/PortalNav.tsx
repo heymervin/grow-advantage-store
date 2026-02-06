@@ -1,5 +1,5 @@
 import { Link, useLocation, useSearchParams } from "react-router-dom";
-import { Home, LayoutDashboard, FileText, ShoppingBag, Settings } from "lucide-react";
+import { LayoutDashboard, ShoppingBag, Settings } from "lucide-react";
 
 interface Breadcrumb {
   label: string;
@@ -13,21 +13,24 @@ const PortalNav = () => {
   const path = location.pathname;
 
   // Build breadcrumbs based on current route
-  const breadcrumbs: Breadcrumb[] = [{ label: "Home", href: "/" }];
+  const breadcrumbs: Breadcrumb[] = [];
 
-  if (path === "/dashboard") {
+  if (path === "/") {
+    breadcrumbs.push({ label: "Admin" });
+  } else if (path === "/dashboard") {
+    breadcrumbs.push({ label: "Admin", href: "/" });
     breadcrumbs.push({ label: "Dashboard" });
   } else if (path === "/snapshot") {
+    breadcrumbs.push({ label: "Admin", href: "/" });
     breadcrumbs.push({ label: "Dashboard", href: `/dashboard?client=${clientSlug}` });
     const month = searchParams.get("month") || "";
-    breadcrumbs.push({ label: `Snapshot${month ? ` \u2014 ${month.replace("-", " ").replace(/\\b\\w/g, (c) => c.toUpperCase())}` : ""}` });
+    breadcrumbs.push({ label: `Snapshot${month ? ` — ${month.replace("-", " ").replace(/\b\w/g, (c) => c.toUpperCase())}` : ""}` });
   } else if (path === "/addons") {
+    breadcrumbs.push({ label: "Admin", href: "/" });
     if (clientSlug) {
       breadcrumbs.push({ label: "Dashboard", href: `/dashboard?client=${clientSlug}` });
     }
     breadcrumbs.push({ label: "Add-ons & Upgrades" });
-  } else if (path === "/admin") {
-    breadcrumbs.push({ label: "Admin" });
   }
 
   const navLinks = [
@@ -37,11 +40,8 @@ const PortalNav = () => {
           { label: "Add-ons", href: `/addons?client=${clientSlug}`, icon: ShoppingBag, match: "/addons" },
         ]
       : []),
-    { label: "Admin", href: "/admin", icon: Settings, match: "/admin" },
+    { label: "Admin", href: "/", icon: Settings, match: "/" },
   ];
-
-  // Don't show nav on the index/home page
-  if (path === "/") return null;
 
   return (
     <nav className="sticky top-0 z-40 border-b border-border bg-card/95 backdrop-blur-sm">

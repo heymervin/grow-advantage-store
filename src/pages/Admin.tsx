@@ -778,27 +778,18 @@ const Admin = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b border-border bg-card">
-        <div className="container mx-auto px-4 py-6 flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-primary uppercase tracking-widest mb-1">Grow Advantage</p>
-            <h1 className="text-2xl font-extrabold text-foreground">Admin Panel</h1>
-          </div>
-          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => setAuthed(false)}>
-            <LogOut className="w-4 h-4" /> Sign Out
-          </Button>
-        </div>
-      </div>
-
-      {/* Content */}
       <div className="container mx-auto px-4 py-8">
         <Tabs defaultValue="clients">
-          <TabsList className="mb-6">
-            <TabsTrigger value="clients" className="gap-2"><Users className="w-4 h-4" /> Clients</TabsTrigger>
-            <TabsTrigger value="snapshots" className="gap-2"><Calendar className="w-4 h-4" /> Snapshots</TabsTrigger>
-            <TabsTrigger value="addons" className="gap-2"><ShoppingBag className="w-4 h-4" /> Add-ons</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-6">
+            <TabsList>
+              <TabsTrigger value="clients" className="gap-2"><Users className="w-4 h-4" /> Clients</TabsTrigger>
+              <TabsTrigger value="snapshots" className="gap-2"><Calendar className="w-4 h-4" /> Snapshots</TabsTrigger>
+              <TabsTrigger value="addons" className="gap-2"><ShoppingBag className="w-4 h-4" /> Add-ons</TabsTrigger>
+            </TabsList>
+            <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground" onClick={() => setAuthed(false)}>
+              <LogOut className="w-4 h-4" /> Sign Out
+            </Button>
+          </div>
           <TabsContent value="clients"><ClientsTab /></TabsContent>
           <TabsContent value="snapshots"><SnapshotsTab /></TabsContent>
           <TabsContent value="addons"><AddonsTab /></TabsContent>
