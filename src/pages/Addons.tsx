@@ -9,11 +9,11 @@ import {
   BarChart3, Clock, DollarSign, FileText, Megaphone, Palette, PenTool,
   Send, Sparkles, ThumbsUp, Wand2, Monitor, Smartphone, Database,
   CloudLightning, Gem, Crown, Flame, Compass, Puzzle, RefreshCw,
-  Users, Calendar, ShoppingBag, X,
+  Users, Calendar, ShoppingBag,
   type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabase";
 import type { Addon } from "@/types/database";
@@ -113,16 +113,23 @@ const Addons = () => {
                 return (
                   <motion.div
                     key={addon.id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 16 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-50px" }}
-                    transition={{ duration: 0.5, delay: index * 0.1 }}
-                    whileHover={{ y: -4 }}
-                    className="relative flex flex-col bg-card rounded-xl border border-border shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden group cursor-pointer"
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.3) }}
+                    className="relative flex flex-col bg-card rounded-xl border border-border shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 group cursor-pointer"
                     onClick={() => handleLearnMore(addon)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        handleLearnMore(addon);
+                      }
+                    }}
                   >
                     {addon.badge && (
-                      <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-1 rounded-bl-lg rounded-tr-lg shadow-sm">
+                      <div className="absolute top-3 right-3 bg-primary text-primary-foreground text-xs font-bold px-2.5 py-0.5 rounded-full shadow-sm z-10">
                         {addon.badge}
                       </div>
                     )}
@@ -144,14 +151,10 @@ const Addons = () => {
                           Timeline: {addon.timeline}
                         </p>
                       )}
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-between group-hover:bg-accent"
-                        size="sm"
-                      >
-                        <span className="text-sm font-medium">Learn More</span>
+                      <div className="w-full flex items-center justify-between px-3 py-2 text-sm font-medium text-muted-foreground group-hover:text-foreground group-hover:bg-accent rounded-md transition-colors">
+                        <span>Learn More</span>
                         <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </Button>
+                      </div>
                     </div>
                   </motion.div>
                 );
@@ -164,12 +167,8 @@ const Addons = () => {
       {/* Detail Dialog */}
       {selectedAddon && (
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] p-0">
-            <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 z-10">
-              <X className="h-4 w-4" />
-              <span className="sr-only">Close</span>
-            </DialogClose>
-            <ScrollArea className="max-h-[90vh]">
+          <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
+            <ScrollArea className="max-h-[calc(90vh-2px)]">
               <div className="p-6">
                 <DialogHeader className="mb-6">
                   <div className="flex items-start gap-4 mb-4">
