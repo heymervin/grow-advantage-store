@@ -227,7 +227,7 @@ const Addons = () => {
                 )}
 
                 <Button asChild className="w-full" size="lg">
-                  <a href={selectedAddon.cta_link} target="_blank" rel="noopener noreferrer">
+                  <a href={selectedAddon.cta_link} target="_top" rel="noopener noreferrer">
                     {selectedAddon.cta_text}
                   </a>
                 </Button>

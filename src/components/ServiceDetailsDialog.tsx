@@ -123,7 +123,7 @@ export const ServiceDetailsDialog = ({
               {service.disabled ? (
                 <span>{service.cta}</span>
               ) : (
-                <a href={service.ctaLink} target="_blank" rel="noopener noreferrer">
+                <a href={service.ctaLink} target="_top" rel="noopener noreferrer">
                   {service.cta}
                 </a>
               )}

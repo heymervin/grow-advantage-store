@@ -126,7 +126,7 @@ export const ServiceCard = ({ service, index }: ServiceCardProps) => {
             {service.disabled ? (
               <span>{service.cta}</span>
             ) : (
-              <a href={service.ctaLink}>{service.cta}</a>
+              <a href={service.ctaLink} target="_top" rel="noopener noreferrer">{service.cta}</a>
             )}
           </Button>
         </div>
