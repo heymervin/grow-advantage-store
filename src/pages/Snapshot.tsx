@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useSearchParams, Link } from "react-router-dom";
+import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, CheckCircle2, Loader2, Calendar, Target, FileCheck,
@@ -434,6 +434,8 @@ const Snapshot = () => {
   const monthSlug = searchParams.get("month") || "";
   const isEditMode = searchParams.get("edit") === "true";
 
+  const navigate = useNavigate();
+
   const [client, setClient] = useState<Client | null>(null);
   const [snapshot, setSnapshot] = useState<MonthlySnapshot | null>(null);
   const [allSnapshots, setAllSnapshots] = useState<MonthlySnapshot[]>([]);
@@ -441,6 +443,7 @@ const Snapshot = () => {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const isAllMode = !monthSlug && !!clientSlug;
 
@@ -522,6 +525,79 @@ const Snapshot = () => {
     update(field, arr.filter((_, i) => i !== index));
   };
 
+  const handleCreateSnapshot = async () => {
+    if (!client || creating) return;
+    setCreating(true);
+    try {
+      const now = new Date();
+      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+      const monthShort = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+      const monthLabel = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
+      const monthSlugNew = `${monthShort[now.getMonth()]}-${now.getFullYear()}`;
+
+      // Check if a snapshot for this month already exists
+      const { data: existing } = await supabase
+        .from("monthly_snapshots")
+        .select("id")
+        .eq("client_id", client.id)
+        .eq("month_slug", monthSlugNew)
+        .single();
+
+      if (existing) {
+        // Navigate to the existing one in edit mode
+        navigate(`/snapshot?client=${clientSlug}&month=${monthSlugNew}&edit=true`);
+        return;
+      }
+
+      const { data: newSnap, error } = await supabase
+        .from("monthly_snapshots")
+        .insert({
+          client_id: client.id,
+          month_label: monthLabel,
+          month_slug: monthSlugNew,
+          meeting_date: now.toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" }),
+          attendees: "",
+          agreement_snapshot: [],
+          wins: "",
+          deliverables_completed: "",
+          slipped: "",
+          insights: "",
+          upcoming_priorities: [],
+          key_deadlines: "",
+          risks_constraints: "",
+          process_improvements: [],
+          adhoc_requests: [],
+          primary_comms: "",
+          recurring_meetings: [],
+          response_times: "",
+          working_well: "",
+          unclear_messy: "",
+          more_visibility: "",
+          priorities_score: 0,
+          delivery_score: 0,
+          communication_score: 0,
+          capacity_score: 0,
+          decisions_actions: [],
+          blockers: "",
+          time_saved: "",
+          friction_removed: "",
+          systems_implemented: "",
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (newSnap) {
+        toast.success(`Created ${monthLabel} snapshot`);
+        navigate(`/snapshot?client=${clientSlug}&month=${monthSlugNew}&edit=true`);
+      }
+    } catch (err: unknown) {
+      toast.error("Failed to create snapshot", { description: (err as Error).message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   // ── Loading / error states ──
   if (loading) {
     return (
@@ -552,11 +628,19 @@ const Snapshot = () => {
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 pt-8 pb-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <p className="text-sm font-medium text-primary uppercase tracking-widest mb-1">Monthly Snapshots</p>
-            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
-              {client.name}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">{allSnapshots.length} snapshot{allSnapshots.length !== 1 ? "s" : ""}</p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium text-primary uppercase tracking-widest mb-1">Monthly Snapshots</p>
+                <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
+                  {client.name}
+                </h1>
+                <p className="text-sm text-muted-foreground mt-1">{allSnapshots.length} snapshot{allSnapshots.length !== 1 ? "s" : ""}</p>
+              </div>
+              <Button onClick={handleCreateSnapshot} disabled={creating} className="gap-2 shrink-0">
+                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                New Snapshot
+              </Button>
+            </div>
           </motion.div>
         </div>
         <div className="container mx-auto px-4 pb-12 space-y-4">
