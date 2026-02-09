@@ -12,6 +12,9 @@ const PortalNav = () => {
   const clientSlug = searchParams.get("client") || "";
   const path = location.pathname;
 
+  // Hide nav entirely on client-facing views (when ?client= is present)
+  if (clientSlug && path !== "/") return null;
+
   // Build breadcrumbs based on current route
   const breadcrumbs: Breadcrumb[] = [];
 
