@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, CheckCircle2, Loader2, Calendar, Target, FileCheck,
   TrendingUp, Lightbulb, AlertTriangle, MessageSquare, ThumbsUp,
-  ClipboardList, Zap, Plus, Trash2, Pencil
+  ClipboardList, Zap, Plus, Trash2, Pencil, ChevronDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -208,6 +208,226 @@ const ReadOnlyTable = ({ headers, rows }: { headers: string[]; rows: string[][] 
 // Main component
 // ──────────────────────────────────────────────
 
+// ──────────────────────────────────────────────
+// Read-only snapshot content (used in both single and all-snapshots views)
+// ──────────────────────────────────────────────
+
+const SnapshotReadOnlyContent = ({ snapshot, client }: { snapshot: MonthlySnapshot; client: Client }) => {
+  const agreements = (snapshot.agreement_snapshot || []) as AgreementItem[];
+  const priorities = (snapshot.upcoming_priorities || []) as PriorityItem[];
+  const processImps = (snapshot.process_improvements || []) as ProcessItem[];
+  const adhocs = (snapshot.adhoc_requests || []) as AdhocItem[];
+  const meetings = (snapshot.recurring_meetings || []) as MeetingItem[];
+  const decisions = (snapshot.decisions_actions || []) as DecisionItem[];
+
+  return (
+    <div className="space-y-6">
+      <Section icon={Calendar} title="Meeting Details">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Client</label>
+            <p className="text-sm font-medium text-foreground px-3 py-2">{client.name}</p>
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Meeting Date</label>
+            <ReadOnlyText value={snapshot.meeting_date} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Attendees</label>
+            <ReadOnlyText value={snapshot.attendees} />
+          </div>
+        </div>
+      </Section>
+
+      <Section icon={Target} title="Purpose of Meeting">
+        <ul className="space-y-1.5 text-sm text-muted-foreground">
+          <li className="flex items-start gap-2"><span className="text-primary mt-1">•</span>Align on priorities + outcomes for the next month</li>
+          <li className="flex items-start gap-2"><span className="text-primary mt-1">•</span>Review delivery + capacity fit (integrator + offshore ops)</li>
+          <li className="flex items-start gap-2"><span className="text-primary mt-1">•</span>Confirm upcoming deliverables, process improvements, and comms cadence</li>
+          <li className="flex items-start gap-2"><span className="text-primary mt-1">•</span>Capture decisions + actions clearly</li>
+        </ul>
+      </Section>
+
+      <Section icon={FileCheck} title="Agreement Snapshot — Operations Partnership">
+        <ReadOnlyTable
+          headers={["Item", "Standard Inclusion", "Notes / Exceptions"]}
+          rows={agreements.map((r) => [r.item, r.inclusion, r.notes])}
+        />
+      </Section>
+
+      <Section icon={TrendingUp} title="Work to Date — Previous Month Review">
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Wins / Progress</label>
+            <ReadOnlyMultiline value={snapshot.wins} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Key Deliverables Completed</label>
+            <ReadOnlyMultiline value={snapshot.deliverables_completed} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">What Didn't Land / Slipped (and why)</label>
+            <ReadOnlyMultiline value={snapshot.slipped} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Insights / Lessons Learned</label>
+            <ReadOnlyMultiline value={snapshot.insights} />
+          </div>
+        </div>
+      </Section>
+
+      <Section icon={Target} title="Upcoming Month — Priorities & Outcomes">
+        <ReadOnlyTable
+          headers={["Outcome", "Owner", "Due / Cadence", "Notes"]}
+          rows={priorities.map((r) => [r.outcome, r.owner, r.due, r.notes])}
+        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Key Deadlines / Launches / Campaigns</label>
+            <ReadOnlyMultiline value={snapshot.key_deadlines} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Risks / Constraints</label>
+            <ReadOnlyMultiline value={snapshot.risks_constraints} />
+          </div>
+        </div>
+      </Section>
+
+      <Section icon={Lightbulb} title="Process Improvement Projects">
+        <ReadOnlyTable
+          headers={["Project", "Status", "Priority", "Owner", "Next Step", "Notes"]}
+          rows={processImps.map((r) => [r.project, r.status, r.priority, r.owner, r.next_step, r.notes])}
+        />
+      </Section>
+
+      <Section icon={ClipboardList} title="Ad hoc / Other Requests">
+        <ReadOnlyTable
+          headers={["Request", "Owner", "Due", "Notes"]}
+          rows={adhocs.map((r) => [r.request, r.owner, r.due, r.notes])}
+        />
+      </Section>
+
+      <Section icon={MessageSquare} title="Communication Tools + Cadence">
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Primary Communication Channels</label>
+            <ReadOnlyMultiline value={snapshot.primary_comms} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">Recurring Meetings</label>
+            <ReadOnlyTable
+              headers={["Meeting", "Cadence", "Time", "Notes"]}
+              rows={meetings.map((r) => [r.meeting, r.cadence, r.time, r.notes])}
+            />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Response Times + Escalation</label>
+            <ReadOnlyMultiline value={snapshot.response_times} />
+          </div>
+        </div>
+      </Section>
+
+      <Section icon={ThumbsUp} title="Client Feedback & Confidence Check">
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">What's Working Well</label>
+            <ReadOnlyMultiline value={snapshot.working_well} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">What Feels Unclear / Messy / Heavy</label>
+            <ReadOnlyMultiline value={snapshot.unclear_messy} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Where They Want More Visibility / Support</label>
+            <ReadOnlyMultiline value={snapshot.more_visibility} />
+          </div>
+          <div className="pt-2 border-t border-border space-y-1">
+            <ScoreDisplay label="Priorities clarity" value={snapshot.priorities_score} />
+            <ScoreDisplay label="Delivery confidence" value={snapshot.delivery_score} />
+            <ScoreDisplay label="Communication flow" value={snapshot.communication_score} />
+            <ScoreDisplay label="Capacity fit" value={snapshot.capacity_score} />
+          </div>
+        </div>
+      </Section>
+
+      <Section icon={ClipboardList} title="Decisions, Actions & Owners">
+        <ReadOnlyTable
+          headers={["Type", "Item", "Owner", "Due / Effective", "Status"]}
+          rows={decisions.map((r) => [r.type, r.item, r.owner, r.due, r.status])}
+        />
+        <div className="mt-4 pt-4 border-t border-border">
+          <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Blockers</label>
+          <ReadOnlyMultiline value={snapshot.blockers} />
+        </div>
+      </Section>
+
+      <Section icon={Zap} title="Efficiency / Impact Notes">
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Estimated Time Saved This Month</label>
+            <ReadOnlyText value={snapshot.time_saved} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Biggest Friction Removed</label>
+            <ReadOnlyText value={snapshot.friction_removed} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 block">Systems Implemented</label>
+            <ReadOnlyText value={snapshot.systems_implemented} />
+          </div>
+        </div>
+      </Section>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────
+// Collapsible snapshot card for all-snapshots view
+// ──────────────────────────────────────────────
+
+const CollapsibleSnapshot = ({ snapshot, client, defaultOpen = false }: { snapshot: MonthlySnapshot; client: Client; defaultOpen?: boolean }) => {
+  const [open, setOpen] = useState(defaultOpen);
+
+  return (
+    <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted/30 transition-colors text-left"
+      >
+        <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center shrink-0">
+          <Calendar className="w-5 h-5 text-primary" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg font-bold text-foreground">{snapshot.month_label}</h2>
+          {snapshot.meeting_date && (
+            <p className="text-xs text-muted-foreground mt-0.5">Meeting: {snapshot.meeting_date}</p>
+          )}
+        </div>
+        <ChevronDown className={`w-5 h-5 text-muted-foreground shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-5 pt-2">
+              <SnapshotReadOnlyContent snapshot={snapshot} client={client} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────
+// Main component
+// ──────────────────────────────────────────────
+
 const Snapshot = () => {
   const [searchParams] = useSearchParams();
   const clientSlug = searchParams.get("client") || "";
@@ -216,10 +436,13 @@ const Snapshot = () => {
 
   const [client, setClient] = useState<Client | null>(null);
   const [snapshot, setSnapshot] = useState<MonthlySnapshot | null>(null);
+  const [allSnapshots, setAllSnapshots] = useState<MonthlySnapshot[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
+
+  const isAllMode = !monthSlug && !!clientSlug;
 
   // Warn before leaving with unsaved changes
   useEffect(() => {
@@ -233,19 +456,30 @@ const Snapshot = () => {
   }, [dirty, isEditMode]);
 
   useEffect(() => {
-    if (!clientSlug || !monthSlug) return;
+    if (!clientSlug) return;
     const load = async () => {
       setLoading(true);
       const { data: c } = await supabase.from("clients").select("*").eq("slug", clientSlug).single();
       if (c) {
         setClient(c);
-        const { data: s } = await supabase
-          .from("monthly_snapshots")
-          .select("*")
-          .eq("client_id", c.id)
-          .eq("month_slug", monthSlug)
-          .single();
-        if (s) setSnapshot(s);
+        if (monthSlug) {
+          // Single snapshot mode
+          const { data: s } = await supabase
+            .from("monthly_snapshots")
+            .select("*")
+            .eq("client_id", c.id)
+            .eq("month_slug", monthSlug)
+            .single();
+          if (s) setSnapshot(s);
+        } else {
+          // All snapshots mode
+          const { data: s } = await supabase
+            .from("monthly_snapshots")
+            .select("*")
+            .eq("client_id", c.id)
+            .order("created_at", { ascending: false });
+          setAllSnapshots(s || []);
+        }
       }
       setLoading(false);
     };
@@ -300,6 +534,59 @@ const Snapshot = () => {
     );
   }
 
+  // ── All snapshots mode (no month specified) ──
+  if (isAllMode) {
+    if (!client) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <div className="text-center max-w-md">
+            <AlertTriangle className="w-12 h-12 text-destructive mx-auto mb-4" />
+            <h1 className="text-2xl font-bold mb-2">Client Not Found</h1>
+            <p className="text-muted-foreground">No client found for <strong>"{clientSlug}"</strong>.</p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 pt-8 pb-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+            <p className="text-sm font-medium text-primary uppercase tracking-widest mb-1">Monthly Snapshots</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold text-foreground">
+              {client.name}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">{allSnapshots.length} snapshot{allSnapshots.length !== 1 ? "s" : ""}</p>
+          </motion.div>
+        </div>
+        <div className="container mx-auto px-4 pb-12 space-y-4">
+          {allSnapshots.length === 0 ? (
+            <div className="bg-card rounded-xl border border-border p-8 text-center">
+              <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground text-sm">No snapshots yet.</p>
+            </div>
+          ) : (
+            allSnapshots.map((snap, i) => (
+              <motion.div
+                key={snap.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: Math.min(i * 0.05, 0.3) }}
+              >
+                <CollapsibleSnapshot
+                  snapshot={snap}
+                  client={client}
+                  defaultOpen={i === 0}
+                />
+              </motion.div>
+            ))
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ── Single snapshot mode (month specified) ──
   if (!client || !snapshot) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
