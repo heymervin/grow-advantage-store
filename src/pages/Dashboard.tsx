@@ -89,9 +89,9 @@ const Dashboard = () => {
   ];
 
   const quickLinks = [
-    { label: "Agreements", icon: FileText, href: "#agreements", external: false },
-    { label: "Files", icon: FolderOpen, href: "#files", external: false },
-    { label: "Add-ons & Upgrades", icon: ShoppingBag, href: `/addons?client=${clientSlug}`, external: false },
+    { label: "Agreements", icon: FileText, href: "https://grow-advantage-pty-lts.moxieapp.com/agreements", external: true },
+    { label: "Files", icon: FolderOpen, href: "https://grow-advantage-pty-lts.moxieapp.com/files", external: true },
+    { label: "Add-ons & Upgrades", icon: ShoppingBag, href: "https://grow-advantage-pty-lts.moxieapp.com/pages/add-ons-upgrades", external: true },
     ...(latestSnapshot
       ? [{ label: "Latest Snapshot", icon: Calendar, href: `/snapshot?client=${clientSlug}&month=${latestSnapshot.month_slug}`, external: false }]
       : []),
@@ -144,19 +144,27 @@ const Dashboard = () => {
         >
           <h2 className="text-lg font-bold text-foreground mb-4">Quick Links</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {quickLinks.map((link, i) => (
-              <Link
-                key={i}
-                to={link.href}
-                className="group flex items-center gap-3 p-4 bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-md transition-all duration-200"
-              >
-                <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                  <link.icon className="w-5 h-5 text-primary" />
-                </div>
-                <span className="text-sm font-semibold text-foreground">{link.label}</span>
-                <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
-              </Link>
-            ))}
+            {quickLinks.map((link, i) => {
+              const cardClass = "group flex items-center gap-3 p-4 bg-card rounded-xl border border-border hover:border-primary/30 hover:shadow-md transition-all duration-200";
+              const inner = (
+                <>
+                  <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                    <link.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-sm font-semibold text-foreground">{link.label}</span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                </>
+              );
+              return link.external ? (
+                <a key={i} href={link.href} target="_top" rel="noopener noreferrer" className={cardClass}>
+                  {inner}
+                </a>
+              ) : (
+                <Link key={i} to={link.href} className={cardClass}>
+                  {inner}
+                </Link>
+              );
+            })}
           </div>
         </motion.section>
 
