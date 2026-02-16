@@ -9,7 +9,7 @@ import {
   BarChart3, Clock, DollarSign, FileText, Megaphone, Palette, PenTool,
   Send, Sparkles, ThumbsUp, Wand2, Monitor, Smartphone, Database,
   CloudLightning, Gem, Crown, Flame, Compass, Puzzle, RefreshCw,
-  ArrowLeft,
+  ArrowLeft, CalendarRange,
   type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 import type { Client, MonthlySnapshot, Addon } from "@/types/database";
 
 // ── Icon picker data ──
@@ -572,13 +573,20 @@ const SnapshotsTab = () => {
     }
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">{snapshots.length} snapshot{snapshots.length !== 1 ? "s" : ""}</p>
-        <Button size="sm" className="gap-1" onClick={() => setCreating(!creating)}>
-          <Plus className="w-4 h-4" /> New Snapshot
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => navigate("/bulk-snapshot-create")}>
+            <CalendarRange className="w-4 h-4" /> Bulk Create
+          </Button>
+          <Button size="sm" className="gap-1" onClick={() => setCreating(!creating)}>
+            <Plus className="w-4 h-4" /> New Snapshot
+          </Button>
+        </div>
       </div>
 
       {creating && (

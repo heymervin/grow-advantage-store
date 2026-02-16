@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Save, CheckCircle2, Loader2, Calendar, Target, FileCheck,
   TrendingUp, Lightbulb, AlertTriangle, MessageSquare, ThumbsUp,
-  ClipboardList, Zap, Plus, Trash2, Pencil, ChevronDown
+  ClipboardList, Zap, Plus, Trash2, Pencil, ChevronDown, X, CalendarRange
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
@@ -382,6 +382,606 @@ const SnapshotReadOnlyContent = ({ snapshot, client }: { snapshot: MonthlySnapsh
 };
 
 // ──────────────────────────────────────────────
+// Bulk Create Modal (Single Client)
+// ──────────────────────────────────────────────
+
+const BulkCreateModal = ({
+  client,
+  onClose,
+  onSuccess
+}: {
+  client: Client;
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const [startMonth, setStartMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [endMonth, setEndMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [creating, setCreating] = useState(false);
+
+  const getMonthsBetween = (start: string, end: string): Array<{ year: number; month: number }> => {
+    const [startYear, startMo] = start.split('-').map(Number);
+    const [endYear, endMo] = end.split('-').map(Number);
+
+    const startDate = new Date(startYear, startMo - 1);
+    const endDate = new Date(endYear, endMo - 1);
+
+    const months: Array<{ year: number; month: number }> = [];
+    const current = new Date(startDate);
+
+    while (current <= endDate) {
+      months.push({
+        year: current.getFullYear(),
+        month: current.getMonth()
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    return months;
+  };
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthShort = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+  const handleBulkCreate = async () => {
+    if (creating) return;
+    setCreating(true);
+
+    try {
+      const months = getMonthsBetween(startMonth, endMonth);
+
+      if (months.length === 0) {
+        toast.error("Invalid date range");
+        setCreating(false);
+        return;
+      }
+
+      if (months.length > 24) {
+        toast.error("Maximum 24 months allowed");
+        setCreating(false);
+        return;
+      }
+
+      // Check for existing snapshots
+      const monthSlugs = months.map(m => `${monthShort[m.month]}-${m.year}`);
+      const { data: existing } = await supabase
+        .from("monthly_snapshots")
+        .select("month_slug")
+        .eq("client_id", client.id)
+        .in("month_slug", monthSlugs);
+
+      const existingSlugs = new Set((existing || []).map(e => e.month_slug));
+      const newMonths = months.filter(m => !existingSlugs.has(`${monthShort[m.month]}-${m.year}`));
+
+      if (newMonths.length === 0) {
+        toast.info("All selected snapshots already exist");
+        setCreating(false);
+        return;
+      }
+
+      // Create snapshots
+      const snapshots = newMonths.map(m => ({
+        client_id: client.id,
+        month_label: `${monthNames[m.month]} ${m.year}`,
+        month_slug: `${monthShort[m.month]}-${m.year}`,
+        meeting_date: "",
+        attendees: "",
+        agreement_snapshot: [],
+        wins: "",
+        deliverables_completed: "",
+        slipped: "",
+        insights: "",
+        upcoming_priorities: [],
+        key_deadlines: "",
+        risks_constraints: "",
+        process_improvements: [],
+        adhoc_requests: [],
+        primary_comms: "",
+        recurring_meetings: [],
+        response_times: "",
+        working_well: "",
+        unclear_messy: "",
+        more_visibility: "",
+        priorities_score: 0,
+        delivery_score: 0,
+        communication_score: 0,
+        capacity_score: 0,
+        decisions_actions: [],
+        blockers: "",
+        time_saved: "",
+        friction_removed: "",
+        systems_implemented: "",
+      }));
+
+      const { error } = await supabase.from("monthly_snapshots").insert(snapshots);
+
+      if (error) throw error;
+
+      const skipped = months.length - newMonths.length;
+      toast.success(
+        `Created ${newMonths.length} snapshot${newMonths.length !== 1 ? 's' : ''}` +
+        (skipped > 0 ? ` (${skipped} already existed)` : '')
+      );
+
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      toast.error("Failed to create snapshots", { description: (err as Error).message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const previewMonths = getMonthsBetween(startMonth, endMonth);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card border border-border rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+      >
+        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center">
+              <CalendarRange className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Bulk Create Snapshots</h2>
+              <p className="text-xs text-muted-foreground">{client.name}</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="space-y-4">
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                Start Month
+              </label>
+              <input
+                type="month"
+                value={startMonth}
+                onChange={(e) => setStartMonth(e.target.value)}
+                className="w-full bg-background border border-border hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 rounded-lg px-3 py-2 text-sm text-foreground transition-colors outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                End Month
+              </label>
+              <input
+                type="month"
+                value={endMonth}
+                onChange={(e) => setEndMonth(e.target.value)}
+                className="w-full bg-background border border-border hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 rounded-lg px-3 py-2 text-sm text-foreground transition-colors outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="bg-muted/30 rounded-lg p-4 border border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Preview ({previewMonths.length} snapshot{previewMonths.length !== 1 ? 's' : ''})
+            </p>
+            {previewMonths.length > 0 ? (
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {previewMonths.map((m, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-foreground py-1">
+                    <Calendar className="w-3.5 h-3.5 text-primary shrink-0" />
+                    {monthNames[m.month]} {m.year}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">Select a date range</p>
+            )}
+            {previewMonths.length > 24 && (
+              <p className="text-xs text-destructive mt-2">Maximum 24 months allowed</p>
+            )}
+          </div>
+
+          <div className="bg-primary/5 rounded-lg p-4 border border-primary/10">
+            <p className="text-xs text-muted-foreground">
+              <strong>Note:</strong> Existing snapshots will be skipped automatically. New snapshots will be created with empty fields ready for you to fill in.
+            </p>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 flex items-center justify-end gap-3">
+          <Button variant="outline" onClick={onClose} disabled={creating}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleBulkCreate}
+            disabled={creating || previewMonths.length === 0 || previewMonths.length > 24}
+            className="gap-2"
+          >
+            {creating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Create {previewMonths.length} Snapshot{previewMonths.length !== 1 ? 's' : ''}
+              </>
+            )}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ──────────────────────────────────────────────
+// Bulk Create Modal (Multiple Clients)
+// ──────────────────────────────────────────────
+
+const MultiClientBulkCreateModal = ({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
+  const [startMonth, setStartMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [endMonth, setEndMonth] = useState(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientIds, setSelectedClientIds] = useState<Set<string>>(new Set());
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [creating, setCreating] = useState(false);
+
+  // Load all clients
+  useEffect(() => {
+    const load = async () => {
+      const { data } = await supabase.from("clients").select("*").order("name");
+      if (data) {
+        setClients(data);
+        // Select all by default
+        setSelectedClientIds(new Set(data.map(c => c.id)));
+      }
+      setLoadingClients(false);
+    };
+    load();
+  }, []);
+
+  const getMonthsBetween = (start: string, end: string): Array<{ year: number; month: number }> => {
+    const [startYear, startMo] = start.split('-').map(Number);
+    const [endYear, endMo] = end.split('-').map(Number);
+
+    const startDate = new Date(startYear, startMo - 1);
+    const endDate = new Date(endYear, endMo - 1);
+
+    const months: Array<{ year: number; month: number }> = [];
+    const current = new Date(startDate);
+
+    while (current <= endDate) {
+      months.push({
+        year: current.getFullYear(),
+        month: current.getMonth()
+      });
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    return months;
+  };
+
+  const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const monthShort = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+  const toggleClient = (clientId: string) => {
+    const newSet = new Set(selectedClientIds);
+    if (newSet.has(clientId)) {
+      newSet.delete(clientId);
+    } else {
+      newSet.add(clientId);
+    }
+    setSelectedClientIds(newSet);
+  };
+
+  const toggleAll = () => {
+    if (selectedClientIds.size === clients.length) {
+      setSelectedClientIds(new Set());
+    } else {
+      setSelectedClientIds(new Set(clients.map(c => c.id)));
+    }
+  };
+
+  const handleBulkCreate = async () => {
+    if (creating || selectedClientIds.size === 0) return;
+    setCreating(true);
+
+    try {
+      const months = getMonthsBetween(startMonth, endMonth);
+
+      if (months.length === 0) {
+        toast.error("Invalid date range");
+        setCreating(false);
+        return;
+      }
+
+      if (months.length > 24) {
+        toast.error("Maximum 24 months allowed");
+        setCreating(false);
+        return;
+      }
+
+      const selectedClients = clients.filter(c => selectedClientIds.has(c.id));
+      let totalCreated = 0;
+      let totalSkipped = 0;
+
+      // Process each client
+      for (const client of selectedClients) {
+        // Check for existing snapshots
+        const monthSlugs = months.map(m => `${monthShort[m.month]}-${m.year}`);
+        const { data: existing } = await supabase
+          .from("monthly_snapshots")
+          .select("month_slug")
+          .eq("client_id", client.id)
+          .in("month_slug", monthSlugs);
+
+        const existingSlugs = new Set((existing || []).map(e => e.month_slug));
+        const newMonths = months.filter(m => !existingSlugs.has(`${monthShort[m.month]}-${m.year}`));
+
+        if (newMonths.length > 0) {
+          // Create snapshots for this client
+          const snapshots = newMonths.map(m => ({
+            client_id: client.id,
+            month_label: `${monthNames[m.month]} ${m.year}`,
+            month_slug: `${monthShort[m.month]}-${m.year}`,
+            meeting_date: "",
+            attendees: "",
+            agreement_snapshot: [],
+            wins: "",
+            deliverables_completed: "",
+            slipped: "",
+            insights: "",
+            upcoming_priorities: [],
+            key_deadlines: "",
+            risks_constraints: "",
+            process_improvements: [],
+            adhoc_requests: [],
+            primary_comms: "",
+            recurring_meetings: [],
+            response_times: "",
+            working_well: "",
+            unclear_messy: "",
+            more_visibility: "",
+            priorities_score: 0,
+            delivery_score: 0,
+            communication_score: 0,
+            capacity_score: 0,
+            decisions_actions: [],
+            blockers: "",
+            time_saved: "",
+            friction_removed: "",
+            systems_implemented: "",
+          }));
+
+          const { error } = await supabase.from("monthly_snapshots").insert(snapshots);
+          if (error) throw error;
+
+          totalCreated += newMonths.length;
+          totalSkipped += months.length - newMonths.length;
+        } else {
+          totalSkipped += months.length;
+        }
+      }
+
+      if (totalCreated > 0) {
+        toast.success(
+          `Created ${totalCreated} snapshot${totalCreated !== 1 ? 's' : ''} across ${selectedClients.length} client${selectedClients.length !== 1 ? 's' : ''}` +
+          (totalSkipped > 0 ? ` (${totalSkipped} already existed)` : '')
+        );
+      } else {
+        toast.info("All selected snapshots already exist");
+      }
+
+      onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      toast.error("Failed to create snapshots", { description: (err as Error).message });
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const previewMonths = getMonthsBetween(startMonth, endMonth);
+  const totalSnapshots = previewMonths.length * selectedClientIds.size;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.95, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+      >
+        <div className="sticky top-0 bg-card border-b border-border px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-accent-light flex items-center justify-center">
+              <CalendarRange className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Bulk Create for All Clients</h2>
+              <p className="text-xs text-muted-foreground">Create snapshots across multiple clients</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg hover:bg-muted flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Date Range */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                  Start Month
+                </label>
+                <input
+                  type="month"
+                  value={startMonth}
+                  onChange={(e) => setStartMonth(e.target.value)}
+                  className="w-full bg-background border border-border hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 rounded-lg px-3 py-2 text-sm text-foreground transition-colors outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
+                  End Month
+                </label>
+                <input
+                  type="month"
+                  value={endMonth}
+                  onChange={(e) => setEndMonth(e.target.value)}
+                  className="w-full bg-background border border-border hover:border-primary/40 focus:border-primary/40 focus:ring-2 focus:ring-primary/20 rounded-lg px-3 py-2 text-sm text-foreground transition-colors outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Client Selection */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Select Clients ({selectedClientIds.size} selected)
+              </label>
+              <button
+                onClick={toggleAll}
+                className="text-xs font-medium text-primary hover:text-primary/80 transition-colors"
+              >
+                {selectedClientIds.size === clients.length ? "Deselect All" : "Select All"}
+              </button>
+            </div>
+            <div className="bg-muted/30 rounded-lg border border-border max-h-48 overflow-y-auto">
+              {loadingClients ? (
+                <div className="p-4 text-center">
+                  <Loader2 className="w-5 h-5 animate-spin mx-auto text-muted-foreground" />
+                </div>
+              ) : clients.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  No clients found
+                </div>
+              ) : (
+                clients.map((client) => (
+                  <label
+                    key={client.id}
+                    className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors border-b border-border/50 last:border-0"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedClientIds.has(client.id)}
+                      onChange={() => toggleClient(client.id)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-2 focus:ring-primary/20"
+                    />
+                    <span className="text-sm text-foreground flex-1">{client.name}</span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div className="bg-muted/30 rounded-lg p-4 border border-border">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Summary
+            </p>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Months:</span>
+                <span className="font-medium text-foreground">{previewMonths.length}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Clients:</span>
+                <span className="font-medium text-foreground">{selectedClientIds.size}</span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-border">
+                <span className="text-muted-foreground font-semibold">Total Snapshots:</span>
+                <span className="font-bold text-primary">{totalSnapshots}</span>
+              </div>
+            </div>
+            {previewMonths.length > 24 && (
+              <p className="text-xs text-destructive mt-3">Maximum 24 months allowed</p>
+            )}
+            {selectedClientIds.size === 0 && (
+              <p className="text-xs text-destructive mt-3">Please select at least one client</p>
+            )}
+          </div>
+
+          <div className="bg-primary/5 rounded-lg p-4 border border-primary/10">
+            <p className="text-xs text-muted-foreground">
+              <strong>Note:</strong> Existing snapshots will be skipped automatically. This operation may take a few moments for large batches.
+            </p>
+          </div>
+        </div>
+
+        <div className="sticky bottom-0 bg-card border-t border-border px-6 py-4 flex items-center justify-end gap-3">
+          <Button variant="outline" onClick={onClose} disabled={creating}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleBulkCreate}
+            disabled={creating || previewMonths.length === 0 || previewMonths.length > 24 || selectedClientIds.size === 0}
+            className="gap-2"
+          >
+            {creating ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus className="w-4 h-4" />
+                Create {totalSnapshots} Snapshot{totalSnapshots !== 1 ? 's' : ''}
+              </>
+            )}
+          </Button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+// ──────────────────────────────────────────────
 // Collapsible snapshot card for all-snapshots view
 // ──────────────────────────────────────────────
 
@@ -444,6 +1044,7 @@ const Snapshot = () => {
   const [saved, setSaved] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showBulkCreate, setShowBulkCreate] = useState(false);
 
   const isAllMode = !monthSlug && !!clientSlug;
 
@@ -626,6 +1227,27 @@ const Snapshot = () => {
 
     return (
       <div className="min-h-screen bg-background">
+        <AnimatePresence>
+          {showBulkCreate && (
+            <BulkCreateModal
+              client={client}
+              onClose={() => setShowBulkCreate(false)}
+              onSuccess={() => {
+                // Reload snapshots
+                const load = async () => {
+                  const { data: s } = await supabase
+                    .from("monthly_snapshots")
+                    .select("*")
+                    .eq("client_id", client.id)
+                    .order("created_at", { ascending: false });
+                  setAllSnapshots(s || []);
+                };
+                load();
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         <div className="container mx-auto px-4 pt-8 pb-4">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <div className="flex items-start justify-between gap-4">
@@ -636,10 +1258,17 @@ const Snapshot = () => {
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">{allSnapshots.length} snapshot{allSnapshots.length !== 1 ? "s" : ""}</p>
               </div>
-              <Button onClick={handleCreateSnapshot} disabled={creating} className="gap-2 shrink-0">
-                {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                New Snapshot
-              </Button>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button onClick={handleCreateSnapshot} disabled={creating} variant="outline" className="gap-2">
+                  {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  New
+                </Button>
+                <Button onClick={() => setShowBulkCreate(true)} className="gap-2">
+                  <CalendarRange className="w-4 h-4" />
+                  <span className="hidden sm:inline">Bulk Create</span>
+                  <span className="sm:hidden">Bulk</span>
+                </Button>
+              </div>
             </div>
           </motion.div>
         </div>

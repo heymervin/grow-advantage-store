@@ -43,7 +43,8 @@ const PortalNav = () => {
           { label: "Add-ons", href: `/addons?client=${clientSlug}`, icon: ShoppingBag, match: "/addons" },
         ]
       : []),
-    { label: "Admin", href: "/", icon: Settings, match: "/" },
+    // Hide Admin button when on /addons page with a client
+    ...((path === "/addons" && clientSlug) ? [] : [{ label: "Admin", href: "/", icon: Settings, match: "/" }]),
   ];
 
   return (
