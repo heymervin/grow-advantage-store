@@ -137,8 +137,8 @@ const ControlDashboard = () => {
 
       try {
         // Fetch both content metrics and general metrics in parallel
-        const contentUrl = `/.netlify/functions/dataslayer-proxy?client=${clientSlug}&period=${timePeriod}`;
-        const generalUrl = `/.netlify/functions/dataslayer-proxy?client=${clientSlug}&period=general_${timePeriod}`;
+        const contentUrl = `/api/dataslayer-proxy?client=${clientSlug}&period=${timePeriod}`;
+        const generalUrl = `/api/dataslayer-proxy?client=${clientSlug}&period=general_${timePeriod}`;
 
         const [contentResponse, generalResponse] = await Promise.all([
           fetch(contentUrl),
@@ -254,7 +254,7 @@ const ControlDashboard = () => {
     const fetchDemographics = async () => {
       try {
         // Fetch age demographics
-        const ageResponse = await fetch(`/.netlify/functions/dataslayer-proxy?client=${clientSlug}&period=age`);
+        const ageResponse = await fetch(`/api/dataslayer-proxy?client=${clientSlug}&period=age`);
         if (ageResponse.ok) {
           const ageData: DemographicsResponse = await ageResponse.json();
           if (ageData.result && ageData.result.length > 1) {
@@ -273,7 +273,7 @@ const ControlDashboard = () => {
         }
 
         // Fetch gender demographics
-        const genderResponse = await fetch(`/.netlify/functions/dataslayer-proxy?client=${clientSlug}&period=gender`);
+        const genderResponse = await fetch(`/api/dataslayer-proxy?client=${clientSlug}&period=gender`);
         if (genderResponse.ok) {
           const genderData: DemographicsResponse = await genderResponse.json();
           if (genderData.result && genderData.result.length > 1) {

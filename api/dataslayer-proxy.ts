@@ -1,4 +1,4 @@
-import { Handler, HandlerEvent } from "@netlify/functions";
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 // In-memory cache (persists for function lifetime ~5-15 min)
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -21,40 +21,30 @@ const CLIENT_URLS: Record<string, Record<string, string>> = {
   },
 };
 
-export const handler: Handler = async (event: HandlerEvent) => {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
-  const headers = {
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Headers": "Content-Type",
-    "Content-Type": "application/json",
-    "Cache-Control": "public, max-age=300", // 5 min browser cache
-  };
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'public, max-age=300'); // 5 min browser cache
 
   // Handle OPTIONS preflight
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers, body: "" };
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
 
   try {
     // Parse query params
-    const client = event.queryStringParameters?.client;
-    const period = event.queryStringParameters?.period as "last7days" | "last30days" | "thismonth";
+    const client = req.query.client as string;
+    const period = req.query.period as string;
 
     if (!client || !period) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ error: "Missing client or period parameter" }),
-      };
+      return res.status(400).json({ error: 'Missing client or period parameter' });
     }
 
     // Validate client and period
     if (!CLIENT_URLS[client] || !CLIENT_URLS[client][period]) {
-      return {
-        statusCode: 404,
-        headers,
-        body: JSON.stringify({ error: "Client or period not configured" }),
-      };
+      return res.status(404).json({ error: 'Client or period not configured' });
     }
 
     // Check cache
@@ -65,15 +55,9 @@ export const handler: Handler = async (event: HandlerEvent) => {
       const age = Date.now() - cached.timestamp;
       if (age < CACHE_TTL) {
         console.log(`Cache HIT for ${cacheKey} (age: ${Math.round(age / 1000)}s)`);
-        return {
-          statusCode: 200,
-          headers: {
-            ...headers,
-            "X-Cache": "HIT",
-            "X-Cache-Age": String(Math.round(age / 1000)),
-          },
-          body: JSON.stringify(cached.data),
-        };
+        res.setHeader('X-Cache', 'HIT');
+        res.setHeader('X-Cache-Age', String(Math.round(age / 1000)));
+        return res.status(200).json(cached.data);
       } else {
         // Expired, remove from cache
         cache.delete(cacheKey);
@@ -99,23 +83,13 @@ export const handler: Handler = async (event: HandlerEvent) => {
 
     console.log(`Cached ${cacheKey} for ${CACHE_TTL / 1000}s`);
 
-    return {
-      statusCode: 200,
-      headers: {
-        ...headers,
-        "X-Cache": "MISS",
-      },
-      body: JSON.stringify(data),
-    };
+    res.setHeader('X-Cache', 'MISS');
+    return res.status(200).json(data);
   } catch (error) {
-    console.error("Error in dataslayer-proxy:", error);
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({
-        error: "Failed to fetch data",
-        message: error instanceof Error ? error.message : "Unknown error",
-      }),
-    };
+    console.error('Error in dataslayer-proxy:', error);
+    return res.status(500).json({
+      error: 'Failed to fetch data',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    });
   }
-};
+}
