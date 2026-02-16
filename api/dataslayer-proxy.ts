@@ -18,6 +18,10 @@ const CLIENT_URLS: Record<string, Record<string, string>> = {
     // Demographics (not time-specific)
     age: 'https://query-manager.dataslayer.ai/get_results/a77cee552f6b93191a67f171086b9a24c9931414466b17020adf6a6a3496efae:e2d11345df07462e966d4327a30baefc?output_type=json',
     gender: 'https://query-manager.dataslayer.ai/get_results/8646d86ed330388756d373c38ed7115563ca94047791ad364cdf8479b6f3ff7f:1de487967c8a45e4a15b3d87709bc84f?output_type=json',
+    // GA4 Website Analytics (multi-property)
+    ga4_thismonth: 'https://query-manager.dataslayer.ai/get_results/b4496e25aa5d012650e33971582409bedaf4b0730d112d48fdfc31a40b28d093:ee0bc9f16c3d40d3ae362b3fe264f131?output_type=json',
+    ga4_last7days: 'https://query-manager.dataslayer.ai/get_results/6bbeed93af28b0f513ea5692d7f14628136fd04ea029646a0201aca8b1440aed:3ba12564a4d647e0975d26bdd3e84508?output_type=json',
+    ga4_last30days: 'https://query-manager.dataslayer.ai/get_results/ee20ad0429ab10c2683505797386ed601780c812290aa596aae955466c8689f2:a13f91cff8df4fcbbcbf56997b36473f?output_type=json',
   },
 };
 

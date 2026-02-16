@@ -18,7 +18,9 @@ import {
   MessageCircle,
   Share2,
   Bookmark,
-  Clock
+  Clock,
+  Globe,
+  Activity
 } from "lucide-react";
 
 // General account metrics
@@ -105,6 +107,20 @@ interface GenderDemographic {
   percentage: number;
 }
 
+interface GA4Property {
+  propertyName: string;
+  activeUsers: number;
+  newUsers: number;
+  sessions: number;
+  engagementRate: number;
+  bounceRate: number;
+  avgSessionDuration: number;
+}
+
+interface GA4Response {
+  result: [string[], ...(string | number)[][]];
+}
+
 const ControlDashboard = () => {
   const [searchParams] = useSearchParams();
   const clientSlug = searchParams.get("client") || "";
@@ -113,6 +129,7 @@ const ControlDashboard = () => {
   const [generalMetrics, setGeneralMetrics] = useState<GeneralMetrics | null>(null);
   const [ageDemographics, setAgeDemographics] = useState<AgeDemographic[]>([]);
   const [genderDemographics, setGenderDemographics] = useState<GenderDemographic[]>([]);
+  const [ga4Data, setGA4Data] = useState<GA4Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<"last7days" | "last30days" | "thismonth">("thismonth");
@@ -136,13 +153,15 @@ const ControlDashboard = () => {
       setError(null);
 
       try {
-        // Fetch both content metrics and general metrics in parallel
+        // Fetch content metrics, general metrics, and GA4 data in parallel
         const contentUrl = `/api/dataslayer-proxy?client=${clientSlug}&period=${timePeriod}`;
         const generalUrl = `/api/dataslayer-proxy?client=${clientSlug}&period=general_${timePeriod}`;
+        const ga4Url = `/api/dataslayer-proxy?client=${clientSlug}&period=ga4_${timePeriod}`;
 
-        const [contentResponse, generalResponse] = await Promise.all([
+        const [contentResponse, generalResponse, ga4Response] = await Promise.all([
           fetch(contentUrl),
-          fetch(generalUrl)
+          fetch(generalUrl),
+          fetch(ga4Url)
         ]);
 
         if (!contentResponse.ok) {
@@ -155,6 +174,77 @@ const ControlDashboard = () => {
 
         const data: DataslayerResponse = await contentResponse.json();
         const generalData: DataslayerResponse = await generalResponse.json();
+
+        // Parse GA4 data (non-blocking if it fails)
+        if (ga4Response.ok) {
+          try {
+            const ga4RawData: GA4Response = await ga4Response.json();
+
+            if (ga4RawData.result && ga4RawData.result.length > 1) {
+              const [headers, ...rows] = ga4RawData.result;
+
+              // Aggregate daily data by property name
+              const propertyMap = new Map<string, {
+                activeUsers: number;
+                newUsers: number;
+                sessions: number;
+                engagementRate: number[];
+                bounceRate: number[];
+                avgSessionDuration: number[];
+                count: number;
+              }>();
+
+              rows.forEach(row => {
+                const propertyName = String(row[1]);
+                const activeUsers = Number(row[2]) || 0;
+                const newUsers = Number(row[3]) || 0;
+                const sessions = Number(row[4]) || 0;
+                const engagementRate = Number(row[5]) || 0;
+                const bounceRate = Number(row[6]) || 0;
+                const avgSessionDuration = Number(row[7]) || 0;
+
+                if (!propertyMap.has(propertyName)) {
+                  propertyMap.set(propertyName, {
+                    activeUsers: 0,
+                    newUsers: 0,
+                    sessions: 0,
+                    engagementRate: [],
+                    bounceRate: [],
+                    avgSessionDuration: [],
+                    count: 0
+                  });
+                }
+
+                const prop = propertyMap.get(propertyName)!;
+                prop.activeUsers += activeUsers;
+                prop.newUsers += newUsers;
+                prop.sessions += sessions;
+                prop.engagementRate.push(engagementRate);
+                prop.bounceRate.push(bounceRate);
+                prop.avgSessionDuration.push(avgSessionDuration);
+                prop.count += 1;
+              });
+
+              // Convert map to array and calculate averages
+              const ga4Properties: GA4Property[] = Array.from(propertyMap.entries()).map(([propertyName, data]) => ({
+                propertyName,
+                activeUsers: data.activeUsers,
+                newUsers: data.newUsers,
+                sessions: data.sessions,
+                engagementRate: data.engagementRate.reduce((a, b) => a + b, 0) / data.count,
+                bounceRate: data.bounceRate.reduce((a, b) => a + b, 0) / data.count,
+                avgSessionDuration: data.avgSessionDuration.reduce((a, b) => a + b, 0) / data.count,
+              }));
+
+              setGA4Data(ga4Properties);
+            }
+          } catch (ga4Error) {
+            console.error('Error parsing GA4 data:', ga4Error);
+            setGA4Data([]);
+          }
+        } else {
+          setGA4Data([]);
+        }
 
         // Parse dataslayer response format
         // result[0] = headers, result[1] = values
@@ -1157,6 +1247,78 @@ const ControlDashboard = () => {
                   </div>
                 </div>
               )}
+            </div>
+          </motion.section>
+        )}
+
+        {/* GA4 Website Analytics */}
+        {ga4Data.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Globe className="w-5 h-5 text-green-600" />
+              <h2 className="text-lg font-bold text-foreground">Website Analytics (GA4)</h2>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ga4Data.map((property, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, delay: 0.9 + i * 0.1 }}
+                  className="bg-card rounded-xl border border-border p-6 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 flex items-center justify-center">
+                      <Activity className="w-5 h-5 text-green-600" />
+                    </div>
+                    <h3 className="text-sm font-bold text-foreground">{property.propertyName}</h3>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Active Users */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Users</span>
+                      <span className="text-lg font-bold text-foreground">{formatNumber(property.activeUsers)}</span>
+                    </div>
+
+                    {/* New Users */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">New Users</span>
+                      <span className="text-lg font-bold text-foreground">{formatNumber(property.newUsers)}</span>
+                    </div>
+
+                    {/* Sessions */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Sessions</span>
+                      <span className="text-lg font-bold text-foreground">{formatNumber(property.sessions)}</span>
+                    </div>
+
+                    <div className="border-t border-border pt-4 space-y-3">
+                      {/* Engagement Rate */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Engagement Rate</span>
+                        <span className="text-sm font-semibold text-green-600">{property.engagementRate.toFixed(2)}%</span>
+                      </div>
+
+                      {/* Bounce Rate */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Bounce Rate</span>
+                        <span className="text-sm font-semibold text-amber-600">{property.bounceRate.toFixed(2)}%</span>
+                      </div>
+
+                      {/* Avg Session Duration */}
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Avg Session</span>
+                        <span className="text-sm font-semibold text-foreground">{formatTime(property.avgSessionDuration)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
             </div>
           </motion.section>
         )}
