@@ -1275,6 +1275,34 @@ const ControlDashboard = () => {
         )}
 
         {/* GA4 Website Analytics */}
+        {ga4Data.length === 0 && !loading && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.8 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Globe className="w-5 h-5 text-green-600" />
+              <h2 className="text-lg font-bold text-foreground">Website Analytics (GA4)</h2>
+            </div>
+            <div className="bg-card border border-border rounded-xl p-8 text-center">
+              <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center mx-auto mb-4">
+                <Globe className="w-6 h-6 text-green-600" />
+              </div>
+              <h3 className="text-base font-semibold text-foreground mb-2">Google Analytics not connected</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Connect your GA4 account to see website analytics here.
+              </p>
+              <a
+                href={`/connect?client=${clientSlug}`}
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                Connect Google Analytics
+              </a>
+            </div>
+          </motion.section>
+        )}
+
         {ga4Data.length > 0 && (
           <motion.section
             initial={{ opacity: 0, y: 20 }}
