@@ -85,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (dbError) throw new Error(dbError.message);
 
-    return res.redirect(`/connect?client=${clientSlug}&success=true&property=${encodeURIComponent(property.name)}`);
+    return res.redirect(`/control-dashboard?client=${clientSlug}`);
   } catch (err) {
     console.error('GA4 auth callback error:', err);
     const msg = err instanceof Error ? err.message : 'Unknown error';
