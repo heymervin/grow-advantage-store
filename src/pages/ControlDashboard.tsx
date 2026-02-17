@@ -179,7 +179,7 @@ const ControlDashboard = () => {
         const generalUrl = isDev
           ? clientConfigs[clientSlug].dataslayerUrls[`general_${timePeriod}`]
           : `/api/dataslayer-proxy?client=${clientSlug}&period=general_${timePeriod}`;
-        const ga4Url = `/api/ga4?client=${clientSlug}&period=${timePeriod}`;
+        const ga4Url = `/api/dataslayer-proxy?client=${clientSlug}&period=ga4_${timePeriod}`;
 
         const [contentResponse, generalResponse, ga4Response] = await Promise.all([
           fetch(contentUrl),
