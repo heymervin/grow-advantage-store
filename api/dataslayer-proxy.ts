@@ -25,6 +25,24 @@ const CLIENT_URLS: Record<string, Record<string, string>> = {
   },
 };
 
+// Dynamic URLs — date_range_type is swapped programmatically
+const DYNAMIC_URLS: Record<string, Record<string, string>> = {
+  imogen: {
+    ga4_devices: `https://query-manager.dataslayer.ai/get_results/888fdc55e180e0a67789991e52dcc52d65224d1c5c54086517fc808d8e0c2f6d:9afc9e47fab74dfa800a05d3bccfb5e4?accounts=[{"id": "properties/344163476", "name": "absoluteimagetraininginstitute.com GA4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/342165386", "name": "insideoutstyleblog.com G4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/251632190", "name": "Bespoke Image G4", "connection_id": "imogen.lamport@gmail.com"}]&dates={"date_range_type": "last30days"}&compare_dates={}&metrics=["activeUsers", "sessions", "engagementRate", "userEngagementDurationperActiveUser"]&dimensions={"rows": ["date", "deviceCategory", "property_name"], "limit_rows": 0, "cols": [], "limit_cols": 0}&filters=[]&sort_by=[]&sort_dims_by=[]&options={}&connections=[{"id": "imogen.lamport@gmail.com"}]&timezone=Asia/Manila&output_type=json`,
+    ga4_top_pages: `https://query-manager.dataslayer.ai/get_results/a63a452f0b646ab7d37b9133653e82964d92a598a0b4aee5f9de62dc34a358a7:06f93812b4c74f4083c453a6d2fccccf?accounts=[{"id": "properties/344163476", "name": "absoluteimagetraininginstitute.com GA4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/342165386", "name": "insideoutstyleblog.com G4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/251632190", "name": "Bespoke Image G4", "connection_id": "imogen.lamport@gmail.com"}]&dates={"date_range_type": "last30days"}&compare_dates={}&metrics=["activeUsers", "screenPageViews", "userEngagementDurationperActiveUser", "bounceRate", "sessions"]&dimensions={"rows": ["date", "property_name", "pageTitle"], "limit_rows": 0, "cols": [], "limit_cols": 0}&filters=[]&sort_by=[]&sort_dims_by=[]&options={}&connections=[{"id": "imogen.lamport@gmail.com"}]&timezone=Asia/Manila&output_type=json`,
+    ga4_sources: `https://query-manager.dataslayer.ai/get_results/144fcace0a222c142323993b50dcbb76b125ec3648ada008aae21f1169c0f22c:939b7181fc6b4df1a711690d85c4c9a0?accounts=[{"id": "properties/344163476", "name": "absoluteimagetraininginstitute.com GA4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/251632190", "name": "Bespoke Image G4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/342165386", "name": "insideoutstyleblog.com G4", "connection_id": "imogen.lamport@gmail.com"}]&dates={"date_range_type": "thismonth"}&compare_dates={}&metrics=["activeUsers", "newUsers", "sessions", "eventCount", "userEngagementDurationperSession"]&dimensions={"rows": ["firstUserMedium", "date"], "limit_rows": 0, "cols": [], "limit_cols": 0}&filters=[]&sort_by=[]&sort_dims_by=[]&options={}&connections=[{"id": "imogen.lamport@gmail.com"}]&timezone=Asia/Manila&output_type=json`,
+    ga4_geography: `https://query-manager.dataslayer.ai/get_results/1475e140dd98d39b61271b1289f26f7b762c9b5bb9cef4eece8f222de5d4060f:4d526e317ea4451381b020bbb744285b?accounts=[{"id": "properties/251632190", "name": "Bespoke Image G4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/344163476", "name": "absoluteimagetraininginstitute.com GA4", "connection_id": "imogen.lamport@gmail.com"}, {"id": "properties/342165386", "name": "insideoutstyleblog.com G4", "connection_id": "imogen.lamport@gmail.com"}]&dates={"date_range_type": "last7days"}&compare_dates={}&metrics=["activeUsers", "newUsers", "sessions", "engagedSessions"]&dimensions={"rows": ["country", "city", "date"], "limit_rows": 0, "cols": [], "limit_cols": 0}&filters=[]&sort_by=[]&sort_dims_by=[]&options={}&connections=[{"id": "imogen.lamport@gmail.com"}]&timezone=Asia/Manila&output_type=json`,
+    facebook_posts: `https://query-manager.dataslayer.ai/get_results/89d6d0ee7fdca0ad85c4daae836dde0b5b830e3e86acbcb3632ea6900f9c33a7:4921754e3a544798a8b60bb4188ca166?accounts=[{"id": "1095314380533155", "name": "Inside Out Style", "connection_id": "imogen@bespokeimage.com.au"}, {"id": "307369065977762", "name": "Academy of Professional Image", "connection_id": "imogen@bespokeimage.com.au"}]&dates={"date_range_type": "last7days"}&compare_dates={}&metrics=["page_consumptions", "post_engagements", "post_engagement_rate", "post_comments", "post_shares", "post_likes"]&dimensions={"rows": ["post_id", "post_name", "post_permalink_url", "post_type", "post_message", "post_story", "post_description", "post_status_type", "post_privacy", "post_link", "post_unshimmed_link", "post_object_id", "post_picture", "post_picture_image", "post_full_picture", "post_full_picture_image", "post_video_length", "post_created_time_of_day"], "limit_rows": 0, "cols": [], "limit_cols": 0}&filters=[]&sort_by=[]&sort_dims_by=[]&options={}&connections=[{"id": "imogen@bespokeimage.com.au"}]&timezone=Asia/Manila&output_type=json`,
+  },
+};
+
+function swapDateRange(url: string, period: string): string {
+  return url.replace(
+    /"date_range_type":\s*"[^"]*"/,
+    `"date_range_type": "${period}"`
+  );
+}
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -41,9 +59,40 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Parse query params
     const client = req.query.client as string;
     const period = req.query.period as string;
+    const type = req.query.type as string | undefined;
 
-    if (!client || !period) {
-      return res.status(400).json({ error: 'Missing client or period parameter' });
+    if (!client) {
+      return res.status(400).json({ error: 'Missing client parameter' });
+    }
+    if (!type && !period) {
+      return res.status(400).json({ error: 'Missing period parameter' });
+    }
+
+    // Handle dynamic URL types (ga4_devices, ga4_top_pages, etc.)
+    if (type) {
+      if (!DYNAMIC_URLS[client] || !DYNAMIC_URLS[client][type]) {
+        return res.status(404).json({ error: 'Dynamic type not configured for client' });
+      }
+
+      const cacheKey = `${client}_${type}_${period}`;
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        const age = Date.now() - cached.timestamp;
+        if (age < CACHE_TTL) {
+          res.setHeader('X-Cache', 'HIT');
+          return res.status(200).json(cached.data);
+        }
+        cache.delete(cacheKey);
+      }
+
+      const url = swapDateRange(DYNAMIC_URLS[client][type], period);
+      console.log(`Fetching dynamic type=${type} period=${period} for ${client}`);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Dataslayer API error: ${response.status}`);
+      const data = await response.json();
+      cache.set(cacheKey, { data, timestamp: Date.now() });
+      res.setHeader('X-Cache', 'MISS');
+      return res.status(200).json(data);
     }
 
     // Validate client and period
