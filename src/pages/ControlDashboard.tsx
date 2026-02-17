@@ -20,7 +20,8 @@ import {
   Bookmark,
   Clock,
   Globe,
-  Activity
+  Activity,
+  Facebook
 } from "lucide-react";
 
 // General account metrics
@@ -107,6 +108,17 @@ interface GenderDemographic {
   percentage: number;
 }
 
+interface FacebookPost {
+  postName: string;
+  postType: string;
+  postEngagements: number;
+  postEngagementRate: number;
+  postLikes: number;
+  postComments: number;
+  postShares: number;
+  pageConsumptions: number;
+}
+
 interface GA4Property {
   propertyName: string;
   activeUsers: number;
@@ -130,6 +142,7 @@ const ControlDashboard = () => {
   const [ageDemographics, setAgeDemographics] = useState<AgeDemographic[]>([]);
   const [genderDemographics, setGenderDemographics] = useState<GenderDemographic[]>([]);
   const [ga4Data, setGA4Data] = useState<GA4Property[]>([]);
+  const [facebookPosts, setFacebookPosts] = useState<FacebookPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<"last7days" | "last30days" | "thismonth">("thismonth");
@@ -415,6 +428,47 @@ const ControlDashboard = () => {
 
     fetchDemographics();
   }, [clientSlug]);
+
+  // Fetch Facebook posts
+  useEffect(() => {
+    if (!clientSlug || !clientConfigs[clientSlug]) return;
+
+    const fetchFacebook = async () => {
+      try {
+        const res = await fetch(`/api/dataslayer-proxy?client=${clientSlug}&type=facebook_posts&period=${timePeriod}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.result || data.result.length < 2) return;
+
+        const [, ...rows] = data.result;
+        // Columns: post_id(0), post_name(1), post_permalink_url(2), post_type(3), post_message(4),
+        // post_story(5), post_description(6), post_status_type(7), post_privacy(8), post_link(9),
+        // post_unshimmed_link(10), post_object_id(11), post_picture(12), post_picture_image(13),
+        // post_full_picture(14), post_full_picture_image(15), post_video_length(16),
+        // post_created_time_of_day(17), page_consumptions(18), post_engagements(19),
+        // post_engagement_rate(20), post_comments(21), post_shares(22), post_likes(23)
+        const posts: FacebookPost[] = rows
+          .map((row: (string | number)[]) => ({
+            postName: String(row[1]) || String(row[4]) || "Untitled",
+            postType: String(row[3]),
+            postEngagements: Number(row[19]) || 0,
+            postEngagementRate: Number(row[20]) || 0,
+            postLikes: Number(row[23]) || 0,
+            postComments: Number(row[21]) || 0,
+            postShares: Number(row[22]) || 0,
+            pageConsumptions: Number(row[18]) || 0,
+          }))
+          .filter((p: FacebookPost) => p.postEngagements > 0)
+          .sort((a: FacebookPost, b: FacebookPost) => b.postEngagements - a.postEngagements)
+          .slice(0, 10);
+        setFacebookPosts(posts);
+      } catch (err) {
+        console.error("Error fetching Facebook posts:", err);
+      }
+    };
+
+    fetchFacebook();
+  }, [clientSlug, timePeriod]);
 
   if (!clientSlug) {
     return (
@@ -1369,6 +1423,43 @@ const ControlDashboard = () => {
                     </div>
                   </div>
                 </motion.div>
+              ))}
+            </div>
+          </motion.section>
+        )}
+
+        {/* Facebook Posts */}
+        {facebookPosts.length > 0 && (
+          <motion.section
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.9 }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Facebook className="w-5 h-5 text-blue-700" />
+              <h2 className="text-lg font-bold text-foreground">Facebook Posts</h2>
+            </div>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <div className="col-span-5">Post</div>
+                <div className="col-span-2 text-right">Engagements</div>
+                <div className="col-span-1 text-right">Likes</div>
+                <div className="col-span-1 text-right">Comments</div>
+                <div className="col-span-1 text-right">Shares</div>
+                <div className="col-span-2 text-right">Eng. Rate</div>
+              </div>
+              {facebookPosts.map((post, i) => (
+                <div key={i} className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm border-t border-border ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
+                  <div className="col-span-5">
+                    <p className="font-medium text-foreground truncate" title={post.postName}>{post.postName}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{post.postType.replace(/_/g, " ")}</p>
+                  </div>
+                  <div className="col-span-2 text-right font-semibold">{formatNumber(post.postEngagements)}</div>
+                  <div className="col-span-1 text-right text-pink-600">{formatNumber(post.postLikes)}</div>
+                  <div className="col-span-1 text-right text-blue-600">{formatNumber(post.postComments)}</div>
+                  <div className="col-span-1 text-right text-cyan-600">{formatNumber(post.postShares)}</div>
+                  <div className="col-span-2 text-right text-green-600">{post.postEngagementRate.toFixed(2)}%</div>
+                </div>
               ))}
             </div>
           </motion.section>
