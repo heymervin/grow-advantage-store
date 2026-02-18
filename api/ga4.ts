@@ -9,7 +9,7 @@ const supabase = createClient(
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
-type QueryType = 'overview' | 'devices' | 'top_pages' | 'sources' | 'geography';
+type QueryType = 'overview' | 'devices' | 'top_pages' | 'sources' | 'geography' | 'channel_quality' | 'heatmap' | 'video_events' | 'new_returning' | 'landing_pages' | 'stickiness';
 
 function getPeriodDates(period: string): { startDate: string; endDate: string } {
   const now = new Date();
@@ -155,6 +155,91 @@ function formatGeography(report: Awaited<ReturnType<typeof runGA4Report>>) {
   return { result: [headers, ...rows] };
 }
 
+function formatChannelQuality(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  const headers = ['channel', 'activeUsers', 'sessions', 'engagementRate', 'avgSessionDuration', 'pagesPerSession'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+    Number(row.metricValues[2].value) * 100,
+    Number(row.metricValues[3].value),
+    Number(row.metricValues[4].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatHeatmap(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  // dayOfWeek: 0=Sunday...6=Saturday, hour: 0-23
+  const headers = ['dayOfWeek', 'hour', 'activeUsers', 'sessions'];
+  const rows = (report.rows ?? []).map(row => [
+    Number(row.dimensionValues[0].value),
+    Number(row.dimensionValues[1].value),
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatVideoEvents(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  const headers = ['eventName', 'eventCount', 'totalUsers'];
+  const rows = (report.rows ?? [])
+    .filter(row => ['video_start', 'video_progress', 'video_complete'].includes(row.dimensionValues[0].value))
+    .map(row => [
+      row.dimensionValues[0].value,
+      Number(row.metricValues[0].value),
+      Number(row.metricValues[1].value),
+    ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatNewReturning(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  const headers = ['segment', 'activeUsers', 'sessions', 'engagementRate', 'avgSessionDuration', 'pagesPerSession'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+    Number(row.metricValues[2].value) * 100,
+    Number(row.metricValues[3].value),
+    Number(row.metricValues[4].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatLandingPages(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  const headers = ['landingPage', 'sessions', 'activeUsers', 'engagementRate', 'pagesPerSession', 'avgSessionDuration'];
+  const rows = (report.rows ?? [])
+    .filter(row => {
+      const page = row.dimensionValues[0].value;
+      return page && page !== '(not set)';
+    })
+    .map(row => [
+      row.dimensionValues[0].value,
+      Number(row.metricValues[0].value),
+      Number(row.metricValues[1].value),
+      Number(row.metricValues[2].value) * 100,
+      Number(row.metricValues[3].value),
+      Number(row.metricValues[4].value),
+    ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatStickiness(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  const headers = ['dauPerMau', 'wauPerMau', 'dauPerWau', 'active7DayUsers', 'active28DayUsers', 'activeUsers'];
+  if (!report.rows || report.rows.length === 0) {
+    return { result: [headers, [0, 0, 0, 0, 0, 0]] };
+  }
+  const row = report.rows[0];
+  const values = [
+    Number(row.metricValues[0].value) * 100,
+    Number(row.metricValues[1].value) * 100,
+    Number(row.metricValues[2].value) * 100,
+    Number(row.metricValues[3].value),
+    Number(row.metricValues[4].value),
+    Number(row.metricValues[5].value),
+  ];
+  return { result: [headers, values] };
+}
+
 const QUERY_CONFIGS: Record<QueryType, GA4ReportConfig> = {
   overview: {
     dimensions: [{ name: 'date' }],
@@ -201,6 +286,65 @@ const QUERY_CONFIGS: Record<QueryType, GA4ReportConfig> = {
     orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
     limit: 200,
   },
+  channel_quality: {
+    dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'sessions' },
+      { name: 'engagementRate' },
+      { name: 'averageSessionDuration' },
+      { name: 'screenPageViewsPerSession' },
+    ],
+    orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+  },
+  heatmap: {
+    dimensions: [{ name: 'dayOfWeek' }, { name: 'hour' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'sessions' },
+    ],
+  },
+  video_events: {
+    dimensions: [{ name: 'eventName' }],
+    metrics: [
+      { name: 'eventCount' },
+      { name: 'totalUsers' },
+    ],
+    // We filter client-side for video events
+  },
+  new_returning: {
+    dimensions: [{ name: 'newVsReturning' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'sessions' },
+      { name: 'engagementRate' },
+      { name: 'averageSessionDuration' },
+      { name: 'screenPageViewsPerSession' },
+    ],
+  },
+  landing_pages: {
+    dimensions: [{ name: 'landingPage' }],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'activeUsers' },
+      { name: 'engagementRate' },
+      { name: 'screenPageViewsPerSession' },
+      { name: 'averageSessionDuration' },
+    ],
+    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+    limit: 50,
+  },
+  stickiness: {
+    dimensions: [],
+    metrics: [
+      { name: 'dauPerMau' },
+      { name: 'wauPerMau' },
+      { name: 'dauPerWau' },
+      { name: 'active7DayUsers' },
+      { name: 'active28DayUsers' },
+      { name: 'activeUsers' },
+    ],
+  },
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -221,7 +365,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (!QUERY_CONFIGS[type]) {
-    return res.status(400).json({ error: `Unknown type: ${type}. Valid types: overview, devices, top_pages, sources, geography` });
+    return res.status(400).json({ error: `Unknown type: ${type}. Valid types: overview, devices, top_pages, sources, geography, channel_quality, heatmap, video_events, new_returning, landing_pages, stickiness` });
   }
 
   const cacheKey = `ga4_${client}_${startDateParam || period}_${endDateParam || ''}_${type}`;
@@ -267,6 +411,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         top_pages: () => formatTopPages(report),
         sources: () => formatSources(report),
         geography: () => formatGeography(report),
+        channel_quality: () => formatChannelQuality(report),
+        heatmap: () => formatHeatmap(report),
+        video_events: () => formatVideoEvents(report),
+        new_returning: () => formatNewReturning(report),
+        landing_pages: () => formatLandingPages(report),
+        stickiness: () => formatStickiness(report),
       };
       const formatted = formatters[type]();
       const [hdr, ...rows] = formatted.result;
