@@ -9,6 +9,8 @@ const supabase = createClient(
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000;
 
+type QueryType = 'overview' | 'devices' | 'top_pages' | 'sources' | 'geography';
+
 function getPeriodDates(period: string): { startDate: string; endDate: string } {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -47,11 +49,19 @@ async function getAccessToken(refreshToken: string): Promise<string> {
   return data.access_token;
 }
 
+interface GA4ReportConfig {
+  dimensions: Array<{ name: string }>;
+  metrics: Array<{ name: string }>;
+  orderBys?: Array<{ metric?: { metricName: string }; desc?: boolean }>;
+  limit?: number;
+}
+
 async function runGA4Report(
   propertyId: string,
   accessToken: string,
   startDate: string,
-  endDate: string
+  endDate: string,
+  config: GA4ReportConfig
 ) {
   const res = await fetch(
     `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
@@ -63,21 +73,135 @@ async function runGA4Report(
       },
       body: JSON.stringify({
         dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: 'date' }],
-        metrics: [
-          { name: 'activeUsers' },
-          { name: 'newUsers' },
-          { name: 'sessions' },
-          { name: 'engagementRate' },
-          { name: 'bounceRate' },
-          { name: 'averageSessionDuration' },
-        ],
+        ...config,
       }),
     }
   );
-  if (!res.ok) throw new Error(`GA4 report failed: ${res.status}`);
-  return res.json();
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`GA4 report failed: ${res.status} ${errText}`);
+  }
+  return res.json() as Promise<{
+    rows?: Array<{
+      dimensionValues: Array<{ value: string }>;
+      metricValues: Array<{ value: string }>;
+    }>;
+  }>;
 }
+
+function formatOverview(report: Awaited<ReturnType<typeof runGA4Report>>, propertyName: string) {
+  const headers = ['date', 'propertyName', 'activeUsers', 'newUsers', 'sessions', 'engagementRate', 'bounceRate', 'avgSessionDuration'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    propertyName,
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+    Number(row.metricValues[2].value),
+    Number(row.metricValues[3].value) * 100,
+    Number(row.metricValues[4].value) * 100,
+    Number(row.metricValues[5].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatDevices(report: Awaited<ReturnType<typeof runGA4Report>>, propertyName: string) {
+  // Dashboard expects: row[1]=device, row[3]=activeUsers, row[4]=sessions
+  const headers = ['date', 'deviceCategory', 'propertyName', 'activeUsers', 'sessions'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    row.dimensionValues[1].value,
+    propertyName,
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatTopPages(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  // Dashboard expects: row[2]=pageTitle, row[3]=activeUsers, row[4]=screenPageViews, row[5]=avgEngagementDuration, row[6]=bounceRate
+  const headers = ['date', 'pagePath', 'pageTitle', 'activeUsers', 'screenPageViews', 'avgEngagementTime', 'bounceRate'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    row.dimensionValues[1].value,
+    row.dimensionValues[2].value,
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+    Number(row.metricValues[2].value),
+    Number(row.metricValues[3].value) * 100,
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatSources(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  // Dashboard expects: row[0]=medium, row[2]=activeUsers
+  const headers = ['sessionMedium', 'date', 'activeUsers'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    row.dimensionValues[1].value,
+    Number(row.metricValues[0].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+function formatGeography(report: Awaited<ReturnType<typeof runGA4Report>>) {
+  // Dashboard expects: row[0]=country, row[3]=activeUsers
+  const headers = ['country', 'date', 'sessions', 'activeUsers'];
+  const rows = (report.rows ?? []).map(row => [
+    row.dimensionValues[0].value,
+    row.dimensionValues[1].value,
+    Number(row.metricValues[0].value),
+    Number(row.metricValues[1].value),
+  ]);
+  return { result: [headers, ...rows] };
+}
+
+const QUERY_CONFIGS: Record<QueryType, GA4ReportConfig> = {
+  overview: {
+    dimensions: [{ name: 'date' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'newUsers' },
+      { name: 'sessions' },
+      { name: 'engagementRate' },
+      { name: 'bounceRate' },
+      { name: 'averageSessionDuration' },
+    ],
+  },
+  devices: {
+    dimensions: [{ name: 'date' }, { name: 'deviceCategory' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'sessions' },
+    ],
+  },
+  top_pages: {
+    dimensions: [{ name: 'date' }, { name: 'pagePath' }, { name: 'pageTitle' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'screenPageViews' },
+      { name: 'averageSessionDuration' },
+      { name: 'bounceRate' },
+    ],
+    orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+    limit: 500,
+  },
+  sources: {
+    dimensions: [{ name: 'sessionMedium' }, { name: 'date' }],
+    metrics: [
+      { name: 'activeUsers' },
+      { name: 'sessions' },
+    ],
+  },
+  geography: {
+    dimensions: [{ name: 'country' }, { name: 'date' }],
+    metrics: [
+      { name: 'sessions' },
+      { name: 'activeUsers' },
+    ],
+    orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
+    limit: 200,
+  },
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -88,12 +212,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const client = req.query.client as string;
   const period = req.query.period as string;
+  const type = (req.query.type as QueryType) || 'overview';
+  const startDateParam = req.query.startDate as string | undefined;
+  const endDateParam = req.query.endDate as string | undefined;
 
   if (!client || !period) {
     return res.status(400).json({ error: 'Missing client or period parameter' });
   }
 
-  const cacheKey = `ga4_${client}_${period}`;
+  if (!QUERY_CONFIGS[type]) {
+    return res.status(400).json({ error: `Unknown type: ${type}. Valid types: overview, devices, top_pages, sources, geography` });
+  }
+
+  const cacheKey = `ga4_${client}_${startDateParam || period}_${endDateParam || ''}_${type}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     res.setHeader('X-Cache', 'HIT');
@@ -101,37 +232,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const { data: connection, error: dbError } = await supabase
+    const { data: connections, error: dbError } = await supabase
       .from('client_ga4_connections')
       .select('property_id, property_name, refresh_token')
-      .eq('client_slug', client)
-      .single();
+      .eq('client_slug', client);
 
-    if (dbError || !connection) {
+    if (dbError || !connections || connections.length === 0) {
       return res.status(404).json({ error: 'No GA4 connection found for this client' });
     }
 
-    const { startDate, endDate } = getPeriodDates(period);
-    const accessToken = await getAccessToken(connection.refresh_token);
-    const report = await runGA4Report(connection.property_id, accessToken, startDate, endDate);
+    const { startDate, endDate } = (startDateParam && endDateParam)
+      ? { startDate: startDateParam, endDate: endDateParam }
+      : getPeriodDates(period);
+    // All properties share the same refresh token (same OAuth session)
+    const accessToken = await getAccessToken(connections[0].refresh_token);
 
-    // Return same format as old Dataslayer GA4 response
-    const headers = ['date', 'propertyName', 'activeUsers', 'newUsers', 'sessions', 'engagementRate', 'bounceRate', 'avgSessionDuration'];
-    const rows = (report.rows ?? []).map((row: {
-      dimensionValues: Array<{ value: string }>;
-      metricValues: Array<{ value: string }>;
-    }) => [
-      row.dimensionValues[0].value,
-      connection.property_name,
-      Number(row.metricValues[0].value),
-      Number(row.metricValues[1].value),
-      Number(row.metricValues[2].value),
-      Number(row.metricValues[3].value) * 100,  // GA4 returns 0-1, dashboard expects 0-100
-      Number(row.metricValues[4].value) * 100,
-      Number(row.metricValues[5].value),
-    ]);
+    // Query all properties in parallel and combine results
+    const reports = await Promise.all(
+      connections.map(conn =>
+        runGA4Report(conn.property_id, accessToken, startDate, endDate, QUERY_CONFIGS[type])
+      )
+    );
 
-    const result = { result: [headers, ...rows] };
+    // Combine rows from all properties, carrying property name through formatters
+    const allRows: unknown[][] = [];
+    let headers: unknown[] = [];
+
+    reports.forEach((report, i) => {
+      const conn = connections[i];
+      const propertyName = conn.property_name ?? conn.property_id;
+      const formatters: Record<QueryType, () => ReturnType<typeof formatOverview>> = {
+        overview: () => formatOverview(report, propertyName),
+        devices: () => formatDevices(report, propertyName),
+        top_pages: () => formatTopPages(report),
+        sources: () => formatSources(report),
+        geography: () => formatGeography(report),
+      };
+      const formatted = formatters[type]();
+      const [hdr, ...rows] = formatted.result;
+      headers = hdr as unknown[];
+      allRows.push(...(rows as unknown[][]));
+    });
+
+    const result = { result: [headers, ...allRows] };
     cache.set(cacheKey, { data: result, timestamp: Date.now() });
     res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(result);
