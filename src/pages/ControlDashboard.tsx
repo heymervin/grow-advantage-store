@@ -28,6 +28,7 @@ import {
   FileText,
   MapPin
 } from "lucide-react";
+import GA4DashboardContent from "../components/ga4/GA4DashboardContent";
 
 // General account metrics
 interface GeneralMetrics {
@@ -231,7 +232,7 @@ const ControlDashboard = () => {
         const generalUrl = isDev
           ? clientConfigs[clientSlug].dataslayerUrls[`general_${timePeriod}`]
           : `/api/dataslayer-proxy?client=${clientSlug}&period=general_${timePeriod}`;
-        const ga4Url = `/api/dataslayer-proxy?client=${clientSlug}&period=ga4_${timePeriod}`;
+        const ga4Url = `/api/ga4?client=${clientSlug}&period=${timePeriod}`;
 
         const [contentResponse, generalResponse, ga4Response] = await Promise.all([
           fetch(contentUrl),
@@ -1536,124 +1537,7 @@ const ControlDashboard = () => {
         )}
 
         {activeTab === "website" && (
-          <div className="space-y-8">
-            {/* Property Overview */}
-            {overviewData.length > 0 && (
-              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="w-5 h-5 text-green-600" />
-                  <h2 className="text-lg font-bold">Property Overview</h2>
-                </div>
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {overviewData.map((prop, i) => (
-                    <div key={i} className="bg-card border border-border rounded-xl p-6">
-                      <h3 className="text-sm font-semibold text-foreground mb-4 truncate">{prop.propertyName}</h3>
-                      <div className="space-y-3">
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground uppercase tracking-wide">Active Users</span><span className="font-bold">{formatNumber(prop.activeUsers)}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground uppercase tracking-wide">New Users</span><span className="font-bold">{formatNumber(prop.newUsers)}</span></div>
-                        <div className="flex justify-between"><span className="text-xs text-muted-foreground uppercase tracking-wide">Sessions</span><span className="font-bold">{formatNumber(prop.sessions)}</span></div>
-                        <div className="border-t border-border pt-3 space-y-2">
-                          <div className="flex justify-between"><span className="text-xs text-muted-foreground uppercase tracking-wide">Engagement</span><span className="text-sm font-semibold text-green-600">{prop.engagementRate.toFixed(1)}%</span></div>
-                          <div className="flex justify-between"><span className="text-xs text-muted-foreground uppercase tracking-wide">Bounce Rate</span><span className="text-sm font-semibold text-amber-600">{prop.bounceRate.toFixed(1)}%</span></div>
-                          <div className="flex justify-between"><span className="text-xs text-muted-foreground uppercase tracking-wide">Avg Session</span><span className="text-sm font-semibold">{formatTime(prop.avgSessionDuration)}</span></div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </motion.section>
-            )}
-
-            {/* Devices */}
-            {deviceData.length > 0 && (
-              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <Monitor className="w-5 h-5 text-blue-600" />
-                  <h2 className="text-lg font-bold">Devices</h2>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {deviceData.map((d, i) => {
-                    const DevIcon = d.device === "mobile" ? Smartphone : d.device === "tablet" ? Tablet : Monitor;
-                    const color = d.device === "mobile" ? "text-purple-600" : d.device === "tablet" ? "text-emerald-600" : "text-blue-600";
-                    const bg = d.device === "mobile" ? "bg-purple-50" : d.device === "tablet" ? "bg-emerald-50" : "bg-blue-50";
-                    return (
-                      <div key={i} className="bg-card border border-border rounded-xl p-6">
-                        <div className={`w-10 h-10 rounded-lg ${bg} flex items-center justify-center mb-3`}><DevIcon className={`w-5 h-5 ${color}`} /></div>
-                        <p className="text-2xl font-bold mb-1">{formatNumber(d.activeUsers)}</p>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide capitalize mb-2">{d.device}</p>
-                        <div className="w-full bg-muted rounded-full h-1.5"><div className="h-full bg-primary rounded-full" style={{ width: `${d.percentage}%` }} /></div>
-                        <p className="text-xs text-muted-foreground mt-1">{d.percentage.toFixed(1)}% of users</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </motion.section>
-            )}
-
-            {/* Sources + Geography */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {sources.length > 0 && (
-                <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-5 h-5 text-purple-600" />
-                    <h2 className="text-lg font-bold">Traffic Sources</h2>
-                  </div>
-                  <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-                    {sources.map((s, i) => (
-                      <div key={i}>
-                        <div className="flex justify-between text-sm mb-1"><span className="font-medium">{s.label}</span><span className="text-muted-foreground">{formatNumber(s.activeUsers)} ({s.percentage.toFixed(1)}%)</span></div>
-                        <div className="w-full bg-muted rounded-full h-2"><motion.div initial={{ width: 0 }} animate={{ width: `${s.percentage}%` }} transition={{ duration: 0.5, delay: i * 0.1 }} className="h-full bg-purple-500 rounded-full" /></div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.section>
-              )}
-
-              {geography.length > 0 && (
-                <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                  <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-5 h-5 text-emerald-600" />
-                    <h2 className="text-lg font-bold">Top Countries</h2>
-                  </div>
-                  <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-                    {geography.map((c, i) => (
-                      <div key={i}>
-                        <div className="flex justify-between text-sm mb-1"><span className="font-medium">{c.country}</span><span className="text-muted-foreground">{formatNumber(c.activeUsers)} ({c.percentage.toFixed(1)}%)</span></div>
-                        <div className="w-full bg-muted rounded-full h-2"><motion.div initial={{ width: 0 }} animate={{ width: `${c.percentage}%` }} transition={{ duration: 0.5, delay: i * 0.1 }} className="h-full bg-emerald-500 rounded-full" /></div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.section>
-              )}
-            </div>
-
-            {/* Top Pages */}
-            {topPages.length > 0 && (
-              <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="w-5 h-5 text-amber-600" />
-                  <h2 className="text-lg font-bold">Top Pages</h2>
-                </div>
-                <div className="bg-card border border-border rounded-xl overflow-hidden">
-                  <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-muted/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    <div className="col-span-6">Page</div><div className="col-span-2 text-right">Views</div><div className="col-span-2 text-right">Users</div><div className="col-span-2 text-right">Bounce</div>
-                  </div>
-                  {topPages.map((p, i) => (
-                    <div key={i} className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm border-t border-border ${i % 2 === 0 ? "" : "bg-muted/20"}`}>
-                      <div className="col-span-6 font-medium truncate" title={p.pageTitle}>{p.pageTitle}</div>
-                      <div className="col-span-2 text-right font-semibold">{formatNumber(p.screenPageViews)}</div>
-                      <div className="col-span-2 text-right text-muted-foreground">{formatNumber(p.activeUsers)}</div>
-                      <div className="col-span-2 text-right text-amber-600">{p.bounceRate.toFixed(1)}%</div>
-                    </div>
-                  ))}
-                </div>
-              </motion.section>
-            )}
-
-            {overviewData.length === 0 && deviceData.length === 0 && (
-              <div className="text-center py-16 text-muted-foreground">No website analytics data available.</div>
-            )}
-          </div>
+          <GA4DashboardContent clientSlug={clientSlug} />
         )}
       </div>
     </div>
