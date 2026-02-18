@@ -1,6 +1,54 @@
 import type { GA4ApiResponse, OverviewMetrics, DeviceData, PageData, SourceData, CountryData } from './types';
 import { MEDIUM_LABELS } from './utils';
 
+export interface ChannelQualityRow {
+  channel: string;
+  activeUsers: number;
+  sessions: number;
+  engagementRate: number;
+  avgSessionDuration: number;
+  pagesPerSession: number;
+}
+
+export interface HeatmapRow {
+  dayOfWeek: number;
+  hour: number;
+  activeUsers: number;
+}
+
+export interface VideoEventRow {
+  eventName: string;
+  eventCount: number;
+  totalUsers: number;
+}
+
+export interface NewReturningSegment {
+  segment: string;
+  activeUsers: number;
+  sessions: number;
+  engagementRate: number;
+  avgSessionDuration: number;
+  pagesPerSession: number;
+}
+
+export interface LandingPageRow {
+  landingPage: string;
+  sessions: number;
+  activeUsers: number;
+  engagementRate: number;
+  pagesPerSession: number;
+  avgSessionDuration: number;
+}
+
+export interface StickinessData {
+  dauPerMau: number;
+  wauPerMau: number;
+  dauPerWau: number;
+  active7DayUsers: number;
+  active28DayUsers: number;
+  activeUsers: number;
+}
+
 export const parseOverview = (data: GA4ApiResponse): OverviewMetrics => {
   const empty: OverviewMetrics = { totalActiveUsers: 0, totalSessions: 0, avgEngagementRate: 0, avgBounceRate: 0, avgSessionDuration: 0, newUsers: 0, returningUsers: 0, dailyData: [] };
   if (!data.result || data.result.length < 2) return empty;
@@ -135,4 +183,84 @@ export const parseGeography = (data: GA4ApiResponse): CountryData[] => {
     .map(([country, activeUsers]) => ({ country, activeUsers, percentage: total > 0 ? (activeUsers / total) * 100 : 0 }))
     .sort((a, b) => b.activeUsers - a.activeUsers)
     .slice(0, 7);
+};
+
+// column order: channel, activeUsers, sessions, engagementRate, avgSessionDuration, pagesPerSession
+export const parseChannelQuality = (data: GA4ApiResponse): ChannelQualityRow[] => {
+  if (!data.result || data.result.length < 2) return [];
+  const [, ...rows] = data.result;
+  return rows.map(row => ({
+    channel: String(row[0]),
+    activeUsers: Number(row[1]) || 0,
+    sessions: Number(row[2]) || 0,
+    engagementRate: Number(row[3]) || 0,
+    avgSessionDuration: Number(row[4]) || 0,
+    pagesPerSession: Number(row[5]) || 0,
+  }));
+};
+
+// column order: dayOfWeek, hour, activeUsers, sessions
+export const parseHeatmap = (data: GA4ApiResponse): HeatmapRow[] => {
+  if (!data.result || data.result.length < 2) return [];
+  const [, ...rows] = data.result;
+  return rows.map(row => ({
+    dayOfWeek: Number(row[0]) || 0,
+    hour: Number(row[1]) || 0,
+    activeUsers: Number(row[2]) || 0,
+  }));
+};
+
+// column order: eventName, eventCount, totalUsers
+export const parseVideoEvents = (data: GA4ApiResponse): VideoEventRow[] => {
+  if (!data.result || data.result.length < 2) return [];
+  const [, ...rows] = data.result;
+  return rows.map(row => ({
+    eventName: String(row[0]),
+    eventCount: Number(row[1]) || 0,
+    totalUsers: Number(row[2]) || 0,
+  }));
+};
+
+// column order: segment, activeUsers, sessions, engagementRate, avgSessionDuration, pagesPerSession
+export const parseNewReturning = (data: GA4ApiResponse): NewReturningSegment[] => {
+  if (!data.result || data.result.length < 2) return [];
+  const [, ...rows] = data.result;
+  return rows.map(row => ({
+    segment: String(row[0]).toLowerCase(),
+    activeUsers: Number(row[1]) || 0,
+    sessions: Number(row[2]) || 0,
+    engagementRate: Number(row[3]) || 0,
+    avgSessionDuration: Number(row[4]) || 0,
+    pagesPerSession: Number(row[5]) || 0,
+  }));
+};
+
+// column order: landingPage, sessions, activeUsers, engagementRate, pagesPerSession, avgSessionDuration
+export const parseLandingPages = (data: GA4ApiResponse): LandingPageRow[] => {
+  if (!data.result || data.result.length < 2) return [];
+  const [, ...rows] = data.result;
+  return rows.map(row => ({
+    landingPage: String(row[0]),
+    sessions: Number(row[1]) || 0,
+    activeUsers: Number(row[2]) || 0,
+    engagementRate: Number(row[3]) || 0,
+    pagesPerSession: Number(row[4]) || 0,
+    avgSessionDuration: Number(row[5]) || 0,
+  }));
+};
+
+// column order: dauPerMau, wauPerMau, dauPerWau, active7DayUsers, active28DayUsers, activeUsers
+export const parseStickiness = (data: GA4ApiResponse): StickinessData | null => {
+  if (!data.result || data.result.length < 2) return null;
+  const [, ...rows] = data.result;
+  const row = rows[0];
+  if (!row) return null;
+  return {
+    dauPerMau: Number(row[0]) || 0,
+    wauPerMau: Number(row[1]) || 0,
+    dauPerWau: Number(row[2]) || 0,
+    active7DayUsers: Number(row[3]) || 0,
+    active28DayUsers: Number(row[4]) || 0,
+    activeUsers: Number(row[5]) || 0,
+  };
 };

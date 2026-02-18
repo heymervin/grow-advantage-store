@@ -4,7 +4,15 @@ import { motion } from 'framer-motion';
 import { Globe, AlertTriangle, Calendar } from 'lucide-react';
 import type { DashboardData, ComparisonData, Period } from '../components/ga4/types';
 import { getPreviousPeriodDates } from '../components/ga4/utils';
-import { parseOverview, parseDevices, parsePages, parseSources, parseGeography } from '../components/ga4/parsers';
+import {
+  parseOverview, parseDevices, parsePages, parseSources, parseGeography,
+  parseChannelQuality, parseHeatmap, parseVideoEvents, parseNewReturning,
+  parseLandingPages, parseStickiness,
+} from '../components/ga4/parsers';
+import type {
+  ChannelQualityRow, HeatmapRow, VideoEventRow, NewReturningSegment,
+  LandingPageRow, StickinessData,
+} from '../components/ga4/parsers';
 import HeroStats from '../components/ga4/HeroStats';
 import TrendChart from '../components/ga4/TrendChart';
 import ChannelChart from '../components/ga4/ChannelChart';
@@ -25,12 +33,12 @@ const PERIODS: { value: Period; label: string }[] = [
 ];
 
 interface ExtendedData extends DashboardData {
-  channelQuality: unknown[];
-  heatmap: unknown[];
-  videoEvents: unknown[];
-  newReturning: unknown[];
-  landingPages: unknown[];
-  stickiness: unknown;
+  channelQuality: ChannelQualityRow[];
+  heatmap: HeatmapRow[];
+  videoEvents: VideoEventRow[];
+  newReturning: NewReturningSegment[];
+  landingPages: LandingPageRow[];
+  stickiness: StickinessData | null;
 }
 
 const GA4Dashboard = () => {
@@ -73,12 +81,12 @@ const GA4Dashboard = () => {
           pages: parsePages(pages),
           sources: parseSources(sources),
           geography: parseGeography(geography),
-          channelQuality: channelQuality.rows ?? [],
-          heatmap: heatmap.rows ?? [],
-          videoEvents: videoEvents.rows ?? [],
-          newReturning: newReturning.rows ?? [],
-          landingPages: landingPages.rows ?? [],
-          stickiness: stickiness.summary ?? {},
+          channelQuality: parseChannelQuality(channelQuality),
+          heatmap: parseHeatmap(heatmap),
+          videoEvents: parseVideoEvents(videoEvents),
+          newReturning: parseNewReturning(newReturning),
+          landingPages: parseLandingPages(landingPages),
+          stickiness: parseStickiness(stickiness),
         });
         setComparison({ overview: parseOverview(prevOverview) });
         setLoading(false);
