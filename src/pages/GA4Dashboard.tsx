@@ -11,6 +11,12 @@ import ChannelChart from '../components/ga4/ChannelChart';
 import TopPagesList from '../components/ga4/TopPagesList';
 import DeviceDonut from '../components/ga4/DeviceDonut';
 import GeographyList from '../components/ga4/GeographyList';
+import ChannelQualityChart from '../components/ga4/ChannelQualityChart';
+import HeatmapChart from '../components/ga4/HeatmapChart';
+import VideoWidget from '../components/ga4/VideoWidget';
+import NewReturningWidget from '../components/ga4/NewReturningWidget';
+import LandingPagesTable from '../components/ga4/LandingPagesTable';
+import StickinessCard from '../components/ga4/StickinessCard';
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'last7days', label: 'Last 7 Days' },
@@ -18,11 +24,20 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'thismonth', label: 'This Month' },
 ];
 
+interface ExtendedData extends DashboardData {
+  channelQuality: unknown[];
+  heatmap: unknown[];
+  videoEvents: unknown[];
+  newReturning: unknown[];
+  landingPages: unknown[];
+  stickiness: unknown;
+}
+
 const GA4Dashboard = () => {
   const [searchParams] = useSearchParams();
   const clientSlug = searchParams.get('client') ?? '';
   const [period, setPeriod] = useState<Period>('thismonth');
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [data, setData] = useState<ExtendedData | null>(null);
   const [comparison, setComparison] = useState<ComparisonData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,14 +58,27 @@ const GA4Dashboard = () => {
       fetch(`${base}&type=sources&period=${period}`).then(r => r.json()),
       fetch(`${base}&type=geography&period=${period}`).then(r => r.json()),
       fetch(`${base}&${prevParams}`).then(r => r.json()),
+      fetch(`${base}&type=channel_quality&period=${period}`).then(r => r.json()),
+      fetch(`${base}&type=heatmap&period=${period}`).then(r => r.json()),
+      fetch(`${base}&type=video_events&period=${period}`).then(r => r.json()),
+      fetch(`${base}&type=new_returning&period=${period}`).then(r => r.json()),
+      fetch(`${base}&type=landing_pages&period=${period}`).then(r => r.json()),
+      fetch(`${base}&type=stickiness&period=${period}`).then(r => r.json()),
     ])
-      .then(([overview, devices, pages, sources, geography, prevOverview]) => {
+      .then(([overview, devices, pages, sources, geography, prevOverview,
+              channelQuality, heatmap, videoEvents, newReturning, landingPages, stickiness]) => {
         setData({
           overview: parseOverview(overview),
           devices: parseDevices(devices),
           pages: parsePages(pages),
           sources: parseSources(sources),
           geography: parseGeography(geography),
+          channelQuality: channelQuality.rows ?? [],
+          heatmap: heatmap.rows ?? [],
+          videoEvents: videoEvents.rows ?? [],
+          newReturning: newReturning.rows ?? [],
+          landingPages: landingPages.rows ?? [],
+          stickiness: stickiness.summary ?? {},
         });
         setComparison({ overview: parseOverview(prevOverview) });
         setLoading(false);
@@ -130,14 +158,17 @@ const GA4Dashboard = () => {
           </div>
         </div>
 
+        {/* Hero Stats */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <HeroStats current={data.overview} previous={comparison?.overview ?? null} />
         </motion.div>
 
+        {/* Daily Trend */}
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
           <TrendChart current={data.overview} previous={comparison?.overview ?? null} />
         </motion.div>
 
+        {/* Sources + Top Pages */}
         <div className="grid md:grid-cols-2 gap-4">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <ChannelChart sources={data.sources} />
@@ -147,14 +178,47 @@ const GA4Dashboard = () => {
           </motion.div>
         </div>
 
+        {/* New vs Returning + Stickiness */}
         <div className="grid md:grid-cols-2 gap-4">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <DeviceDonut devices={data.devices} />
+            <NewReturningWidget data={data.newReturning} />
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <StickinessCard data={data.stickiness} />
+          </motion.div>
+        </div>
+
+        {/* Channel Quality */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <ChannelQualityChart data={data.channelQuality} />
+        </motion.div>
+
+        {/* Landing Pages */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+          <LandingPagesTable data={data.landingPages} />
+        </motion.div>
+
+        {/* Video Events (only shown if data exists) */}
+        {data.videoEvents.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <VideoWidget data={data.videoEvents} />
+          </motion.div>
+        )}
+
+        {/* Devices + Geography */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+            <DeviceDonut devices={data.devices} />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
             <GeographyList countries={data.geography} />
           </motion.div>
         </div>
+
+        {/* Heatmap — best time to publish */}
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+          <HeatmapChart data={data.heatmap} />
+        </motion.div>
       </div>
     </div>
   );
