@@ -946,21 +946,23 @@ const ControlDashboard = () => {
             transition={{ duration: 0.5 }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                <Instagram className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-white" />
               </div>
               <div>
                 <p className="text-sm font-medium text-primary uppercase tracking-widest">
-                  Social Media Analytics
+                  Analytics Dashboard
                 </p>
                 <h1 className="text-3xl md:text-4xl font-extrabold text-foreground">
                   {config.name}
                 </h1>
               </div>
             </div>
-            <p className="text-muted-foreground">
-              {config.username} • @{insights.username}
-            </p>
+            {activeTab !== 'website' && (
+              <p className="text-muted-foreground">
+                {config.username} • @{insights.username}
+              </p>
+            )}
 
             {/* Tab Navigation */}
             <div className="flex border-b border-border mt-6 -mb-8 md:-mb-12">
