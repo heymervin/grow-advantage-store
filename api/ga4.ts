@@ -457,6 +457,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           { activeUsers: 0, newUsers: 0, sessions: 0, engagedSessions: 0, bouncedSessions: 0 }
         );
 
+        const dailyData = (report.rows ?? []).map(row => ({
+          date: row.dimensionValues[0].value,
+          activeUsers: Number(row.metricValues[0].value),
+          sessions: Number(row.metricValues[2].value),
+        })).sort((a, b) => a.date.localeCompare(b.date));
+
         return {
           property_id: conn.property_id,
           property_name: conn.property_name ?? conn.property_id,
@@ -465,6 +471,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           sessions: totals.sessions,
           engagementRate: totals.sessions > 0 ? (totals.engagedSessions / totals.sessions) * 100 : 0,
           bounceRate: totals.sessions > 0 ? (totals.bouncedSessions / totals.sessions) * 100 : 0,
+          dailyData,
         };
       });
 
