@@ -9,6 +9,7 @@ const supabase = createClient(
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'public, max-age=300');
 
   if (req.method === 'OPTIONS') return res.status(200).end();
 
