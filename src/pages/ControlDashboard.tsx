@@ -205,10 +205,6 @@ const ControlDashboard = () => {
         general_thismonth: 'https://query-manager.dataslayer.ai/get_results/4bd96536dacc4e4cc89707b217a69f9712c47145c04a0fe9aa7b72ab2b888f1c:2d09e3d1e4b54d85a593a7b8043a25d3?output_type=json',
         general_last30days: 'https://query-manager.dataslayer.ai/get_results/a7c44f7cf60b79fe8204cff4aa65b4be3fb8d6303b0f3bfbc7cf8e97d55566d1:7ba5f2e0e4af4c63b3cc0535dcc7b76f?output_type=json',
         general_last7days: 'https://query-manager.dataslayer.ai/get_results/3a9381703aeeefd7a28eb9851e405868ed8fab1992c204d890554c32dc9c3671:bf2b7bcd8ca3413295e39b52d173f387?output_type=json',
-        // GA4 Website Analytics
-        ga4_thismonth: 'https://query-manager.dataslayer.ai/get_results/b4496e25aa5d012650e33971582409bedaf4b0730d112d48fdfc31a40b28d093:ee0bc9f16c3d40d3ae362b3fe264f131?output_type=json',
-        ga4_last7days: 'https://query-manager.dataslayer.ai/get_results/6bbeed93af28b0f513ea5692d7f14628136fd04ea029646a0201aca8b1440aed:3ba12564a4d647e0975d26bdd3e84508?output_type=json',
-        ga4_last30days: 'https://query-manager.dataslayer.ai/get_results/ee20ad0429ab10c2683505797386ed601780c812290aa596aae955466c8689f2:a13f91cff8df4fcbbcbf56997b36473f?output_type=json',
       },
     },
   };
