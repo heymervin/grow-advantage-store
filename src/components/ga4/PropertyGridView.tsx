@@ -71,11 +71,11 @@ export function PropertyGridView({ properties, onPropertyClick, loading, error }
   // Loading state
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
         {[...Array(4)].map((_, i) => (
           <div
             key={i}
-            className="bg-card border border-border rounded-2xl p-4 w-full h-[160px] animate-pulse"
+            className="bg-card border border-border rounded-2xl p-4 w-full min-h-[180px] lg:min-h-[200px] animate-pulse"
           >
             <div className="h-4 bg-muted rounded w-1/2 mb-4" />
             <div className="h-8 bg-muted rounded w-3/4 mb-4" />
@@ -108,7 +108,12 @@ export function PropertyGridView({ properties, onPropertyClick, loading, error }
 
   // Grid view
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div
+      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6"
+      role="region"
+      aria-label="GA4 Properties Overview"
+      aria-live="polite"
+    >
       {sortedProperties.map((property) => (
         <PropertyMiniCard
           key={property.property_id}

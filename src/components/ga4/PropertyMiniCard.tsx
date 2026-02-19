@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
 interface DailyDataPoint {
@@ -68,11 +68,11 @@ export function PropertyMiniCard({
 
   const isPositiveTrend = trendPercentage !== null && trendPercentage >= 0;
 
-  // Border color based on health
-  const healthBorderClass = {
-    healthy: 'border-l-emerald-500',
-    warning: 'border-l-amber-500',
-    critical: 'border-l-red-500',
+  // Health status styles with background tint for warning/critical
+  const healthStyles = {
+    healthy: 'border-l-4 border-l-emerald-500',
+    warning: 'bg-amber-50 dark:bg-amber-950/30 border-l-4 border-l-amber-500 ring-1 ring-amber-200 dark:ring-amber-800',
+    critical: 'bg-red-50 dark:bg-red-950/30 border-l-4 border-l-red-500 ring-1 ring-red-200 dark:ring-red-800',
   }[healthStatus()];
 
   // Trend color
@@ -92,10 +92,11 @@ export function PropertyMiniCard({
     <div
       onClick={onClick}
       className={`
-        bg-card border border-l-4 ${healthBorderClass}
-        rounded-2xl p-4
-        hover:shadow-lg transition-all cursor-pointer
-        w-full max-w-[350px] h-[160px]
+        bg-card border ${healthStyles}
+        rounded-2xl p-4 lg:p-5
+        hover:shadow-lg transition-shadow duration-200 cursor-pointer
+        focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
+        w-full min-h-[180px] lg:min-h-[200px]
         flex flex-col justify-between
       `}
       role="button"
@@ -109,8 +110,11 @@ export function PropertyMiniCard({
       aria-label={`View details for ${propertyName}`}
     >
       {/* Header: Property Name */}
-      <div className="text-sm font-medium text-muted-foreground truncate">
+      <div className="text-sm font-bold text-foreground truncate flex items-center gap-1.5" title={propertyName}>
         {propertyName}
+        {healthStatus() === 'critical' && (
+          <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" aria-label="Critical status" />
+        )}
       </div>
 
       {/* Main Metric: Active Users + Trend */}
