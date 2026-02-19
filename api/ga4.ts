@@ -441,23 +441,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const breakdown = filteredConnections.map((conn, i) => {
         const report = reports[i];
         const totals = (report.rows ?? []).reduce(
-          (acc, row) => ({
-            activeUsers: acc.activeUsers + Number(row.metricValues[0].value),
-            sessions: acc.sessions + Number(row.metricValues[2].value),
-            engagementRate: acc.engagementRate + Number(row.metricValues[3].value),
-            bounceRate: acc.bounceRate + Number(row.metricValues[4].value),
-            count: acc.count + 1,
-          }),
-          { activeUsers: 0, sessions: 0, engagementRate: 0, bounceRate: 0, count: 0 }
+          (acc, row) => {
+            const sessions = Number(row.metricValues[2].value);
+            const engagementRate = Number(row.metricValues[3].value);
+            const bounceRate = Number(row.metricValues[4].value);
+
+            return {
+              activeUsers: acc.activeUsers + Number(row.metricValues[0].value),
+              newUsers: acc.newUsers + Number(row.metricValues[1].value),
+              sessions: acc.sessions + sessions,
+              engagedSessions: acc.engagedSessions + (sessions * engagementRate),
+              bouncedSessions: acc.bouncedSessions + (sessions * bounceRate),
+            };
+          },
+          { activeUsers: 0, newUsers: 0, sessions: 0, engagedSessions: 0, bouncedSessions: 0 }
         );
 
         return {
           property_id: conn.property_id,
           property_name: conn.property_name ?? conn.property_id,
           activeUsers: totals.activeUsers,
+          newUsers: totals.newUsers,
           sessions: totals.sessions,
-          engagementRate: totals.count > 0 ? (totals.engagementRate / totals.count) * 100 : 0,
-          bounceRate: totals.count > 0 ? (totals.bounceRate / totals.count) * 100 : 0,
+          engagementRate: totals.sessions > 0 ? (totals.engagedSessions / totals.sessions) * 100 : 0,
+          bounceRate: totals.sessions > 0 ? (totals.bouncedSessions / totals.sessions) * 100 : 0,
         };
       });
 
