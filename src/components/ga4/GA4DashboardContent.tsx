@@ -25,7 +25,7 @@ import NewReturningWidget from './NewReturningWidget';
 import LandingPagesTable from './LandingPagesTable';
 import StickinessCard from './StickinessCard';
 import PropertySelector from './PropertySelector';
-import { PropertyBreakdownTable } from './PropertyBreakdownTable';
+import { PropertyGridView } from './PropertyGridView';
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'last7days', label: 'Last 7 Days' },
@@ -165,16 +165,22 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
         <HeroStats current={data.overview} previous={comparison?.overview ?? null} />
       </motion.div>
 
+      {/* Show grid view when viewing all properties */}
       {!selectedProperty && propertyBreakdown.length > 0 && (
-        <PropertyBreakdownTable
-          properties={propertyBreakdown}
-          onPropertyClick={setSelectedProperty}
-        />
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+          <PropertyGridView
+            properties={propertyBreakdown}
+            onPropertyClick={setSelectedProperty}
+          />
+        </motion.div>
       )}
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-        <TrendChart current={data.overview} previous={comparison?.overview ?? null} />
-      </motion.div>
+      {/* Show detailed charts only when viewing a single property */}
+      {selectedProperty && (
+        <>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+            <TrendChart current={data.overview} previous={comparison?.overview ?? null} />
+          </motion.div>
 
       <div className="grid md:grid-cols-2 gap-4">
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
@@ -217,9 +223,11 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
         </motion.div>
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-        <HeatmapChart data={data.heatmap} />
-      </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+            <HeatmapChart data={data.heatmap} />
+          </motion.div>
+        </>
+      )}
     </div>
   );
 };

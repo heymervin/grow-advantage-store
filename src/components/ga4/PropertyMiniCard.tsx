@@ -83,9 +83,9 @@ export function PropertyMiniCard({
     return new Intl.NumberFormat('en-US').format(Math.round(num));
   };
 
-  // Format percentage
-  const formatPercent = (decimal: number) => {
-    return `${Math.round(decimal * 100)}%`;
+  // Format percentage (value is already a percentage 0-100, not decimal)
+  const formatPercent = (percentage: number) => {
+    return `${Math.round(percentage)}%`;
   };
 
   return (
