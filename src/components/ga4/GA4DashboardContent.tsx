@@ -155,19 +155,15 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
           </div>
         </div>
         <PropertySelector
-          properties={propertyBreakdown}
+          clientSlug={clientSlug}
           selectedProperty={selectedProperty}
           onPropertyChange={setSelectedProperty}
         />
       </div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-        <HeroStats current={data.overview} previous={comparison?.overview ?? null} />
-      </motion.div>
-
       {/* Show grid view when viewing all properties */}
       {!selectedProperty && propertyBreakdown.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
           <PropertyGridView
             properties={propertyBreakdown}
             onPropertyClick={setSelectedProperty}
@@ -175,9 +171,13 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
         </motion.div>
       )}
 
-      {/* Show detailed charts only when viewing a single property */}
+      {/* Show HeroStats and detailed charts only when viewing a single property */}
       {selectedProperty && (
         <>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+            <HeroStats current={data.overview} previous={comparison?.overview ?? null} />
+          </motion.div>
+
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
             <TrendChart current={data.overview} previous={comparison?.overview ?? null} />
           </motion.div>
