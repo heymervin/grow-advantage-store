@@ -24,6 +24,8 @@ import VideoWidget from './VideoWidget';
 import NewReturningWidget from './NewReturningWidget';
 import LandingPagesTable from './LandingPagesTable';
 import StickinessCard from './StickinessCard';
+import PropertySelector from './PropertySelector';
+import { PropertyBreakdownTable } from './PropertyBreakdownTable';
 
 const PERIODS: { value: Period; label: string }[] = [
   { value: 'last7days', label: 'Last 7 Days' },
@@ -50,13 +52,16 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
   const [comparison, setComparison] = useState<ComparisonData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+  const [propertyBreakdown, setPropertyBreakdown] = useState<any[]>([]);
 
   useEffect(() => {
     if (!clientSlug) return;
     setLoading(true);
     setError(null);
 
-    const base = `/api/ga4?client=${clientSlug}`;
+    const propertyParam = selectedProperty ? `&property=${selectedProperty}` : '';
+    const base = `/api/ga4?client=${clientSlug}${propertyParam}`;
     const { startDate, endDate } = getPreviousPeriodDates(period);
     const prevParams = `startDate=${startDate}&endDate=${endDate}&period=${period}`;
 
@@ -90,13 +95,18 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
           stickiness: parseStickiness(stickiness),
         });
         setComparison({ overview: parseOverview(prevOverview) });
+        if (overview.propertyBreakdown) {
+          setPropertyBreakdown(overview.propertyBreakdown);
+        } else {
+          setPropertyBreakdown([]);
+        }
         setLoading(false);
       })
       .catch(err => {
         setError(err.message);
         setLoading(false);
       });
-  }, [clientSlug, period]);
+  }, [clientSlug, period, selectedProperty]);
 
   if (loading) return (
     <div className="flex items-center justify-center py-24">
@@ -124,29 +134,43 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
-      <div className="flex items-center gap-2">
-        <Calendar className="w-4 h-4 text-muted-foreground" />
-        <div className="inline-flex items-center bg-muted rounded-lg p-1 gap-1">
-          {PERIODS.map(p => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
-                period === p.value
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+      {/* Period and Property selectors */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-muted-foreground" />
+          <div className="inline-flex items-center bg-muted rounded-lg p-1 gap-1">
+            {PERIODS.map(p => (
+              <button
+                key={p.value}
+                onClick={() => setPeriod(p.value)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  period === p.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
         </div>
+        <PropertySelector
+          properties={propertyBreakdown}
+          selectedProperty={selectedProperty}
+          onPropertyChange={setSelectedProperty}
+        />
       </div>
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
         <HeroStats current={data.overview} previous={comparison?.overview ?? null} />
       </motion.div>
+
+      {!selectedProperty && propertyBreakdown.length > 0 && (
+        <PropertyBreakdownTable
+          properties={propertyBreakdown}
+          onPropertyClick={setSelectedProperty}
+        />
+      )}
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
         <TrendChart current={data.overview} previous={comparison?.overview ?? null} />
