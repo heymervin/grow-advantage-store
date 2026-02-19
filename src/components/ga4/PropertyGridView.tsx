@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { PropertyMiniCard } from './PropertyMiniCard';
+import { calculateHealthStatus } from './property-grid-utils';
 
 interface DailyDataPoint {
   date: string;
@@ -24,8 +26,6 @@ interface Props {
   error?: string;
 }
 
-type HealthStatus = 'critical' | 'warning' | 'healthy';
-
 /**
  * PropertyGridView - Responsive grid of property cards
  *
@@ -43,30 +43,21 @@ type HealthStatus = 'critical' | 'warning' | 'healthy';
  * />
  */
 export function PropertyGridView({ properties, onPropertyClick, loading, error }: Props) {
-  // Calculate health status for a property
-  const getHealthStatus = (property: PropertyData): HealthStatus => {
-    if (!property.previousPeriodUsers || property.previousPeriodUsers === 0) {
-      return 'healthy';
-    }
-    const change = (property.activeUsers - property.previousPeriodUsers) / property.previousPeriodUsers;
-    if (change < -0.5) return 'critical'; // down >50%
-    if (change < -0.2) return 'warning';  // down 20-50%
-    return 'healthy';
-  };
-
   // Sort properties by health status (critical > warning > healthy), then by users
-  const sortedProperties = [...properties].sort((a, b) => {
+  const sortedProperties = useMemo(() => {
     const healthOrder = { critical: 0, warning: 1, healthy: 2 };
-    const healthA = getHealthStatus(a);
-    const healthB = getHealthStatus(b);
+    return [...properties].sort((a, b) => {
+      const healthA = calculateHealthStatus(a.activeUsers, a.previousPeriodUsers);
+      const healthB = calculateHealthStatus(b.activeUsers, b.previousPeriodUsers);
 
-    if (healthA !== healthB) {
-      return healthOrder[healthA] - healthOrder[healthB];
-    }
+      if (healthA !== healthB) {
+        return healthOrder[healthA] - healthOrder[healthB];
+      }
 
-    // Same health status - sort by active users descending
-    return b.activeUsers - a.activeUsers;
-  });
+      // Same health status - sort by active users descending
+      return b.activeUsers - a.activeUsers;
+    });
+  }, [properties]);
 
   // Loading state
   if (loading) {

@@ -1,5 +1,7 @@
+import React from 'react';
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { LineChart, Line } from 'recharts';
+import { calculateHealthStatus } from './property-grid-utils';
 
 interface DailyDataPoint {
   date: string;
@@ -41,7 +43,7 @@ interface Props {
  *   onClick={() => navigate(`/property/123456789`)}
  * />
  */
-export function PropertyMiniCard({
+export const PropertyMiniCard = React.memo(function PropertyMiniCard({
   propertyId,
   propertyName,
   activeUsers,
@@ -52,14 +54,7 @@ export function PropertyMiniCard({
   previousPeriodUsers,
   onClick,
 }: Props) {
-  // Calculate health status based on user trend
-  const healthStatus = (): 'healthy' | 'warning' | 'critical' => {
-    if (!previousPeriodUsers || previousPeriodUsers === 0) return 'healthy';
-    const change = (activeUsers - previousPeriodUsers) / previousPeriodUsers;
-    if (change < -0.5) return 'critical'; // down >50%
-    if (change < -0.2) return 'warning';  // down 20-50%
-    return 'healthy';
-  };
+  const health = calculateHealthStatus(activeUsers, previousPeriodUsers);
 
   // Calculate trend percentage
   const trendPercentage = previousPeriodUsers && previousPeriodUsers > 0
@@ -73,7 +68,7 @@ export function PropertyMiniCard({
     healthy: 'border-l-4 border-l-emerald-500',
     warning: 'bg-amber-50 dark:bg-amber-950/30 border-l-4 border-l-amber-500 ring-1 ring-amber-200 dark:ring-amber-800',
     critical: 'bg-red-50 dark:bg-red-950/30 border-l-4 border-l-red-500 ring-1 ring-red-200 dark:ring-red-800',
-  }[healthStatus()];
+  }[health];
 
   // Trend color
   const trendColorClass = isPositiveTrend ? 'text-emerald-600' : 'text-red-600';
@@ -112,7 +107,7 @@ export function PropertyMiniCard({
       {/* Header: Property Name */}
       <div className="text-sm font-bold text-foreground truncate flex items-center gap-1.5" title={propertyName}>
         {propertyName}
-        {healthStatus() === 'critical' && (
+        {health === 'critical' && (
           <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" aria-label="Critical status" />
         )}
       </div>
@@ -140,18 +135,16 @@ export function PropertyMiniCard({
       {/* Sparkline */}
       <div className="h-10 -mx-1">
         {dailyData.length > 0 ? (
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={dailyData}>
-              <Line
-                type="monotone"
-                dataKey="activeUsers"
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                dot={false}
-                isAnimationActive={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <LineChart width={318} height={40} data={dailyData}>
+            <Line
+              type="monotone"
+              dataKey="activeUsers"
+              stroke={isPositiveTrend ? '#10b981' : '#ef4444'}
+              strokeWidth={1.5}
+              dot={false}
+              isAnimationActive={false}
+            />
+          </LineChart>
         ) : (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
             No trend data
@@ -166,4 +159,4 @@ export function PropertyMiniCard({
       </div>
     </div>
   );
-}
+});
