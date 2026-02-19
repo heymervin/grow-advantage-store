@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, Globe } from 'lucide-react';
+import { AlertTriangle, ChevronDown, Globe } from 'lucide-react';
 
 interface Property {
   property_id: string;
@@ -15,21 +15,35 @@ interface Props {
 const PropertySelector = ({ clientSlug, selectedProperty, onPropertyChange }: Props) => {
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     if (!clientSlug) return;
 
-    fetch(`/api/ga4-properties?client=${clientSlug}`)
-      .then(res => res.json())
+    const controller = new AbortController();
+
+    fetch(`/api/ga4-properties?client=${clientSlug}`, {
+      signal: controller.signal
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('Failed to load properties');
+        return res.json();
+      })
       .then(data => {
         setProperties(data.properties || []);
-        setLoading(false);
+        setError(null);
       })
       .catch(err => {
-        console.error('Failed to fetch properties:', err);
-        setLoading(false);
-      });
+        if (err.name !== 'AbortError') {
+          console.error('Failed to fetch properties:', err);
+          setError(err.message);
+          setProperties([]);
+        }
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
   }, [clientSlug]);
 
   const selectedPropertyName = selectedProperty
@@ -41,6 +55,15 @@ const PropertySelector = ({ clientSlug, selectedProperty, onPropertyChange }: Pr
       <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-muted rounded-lg text-xs text-muted-foreground">
         <Globe className="w-3 h-3 animate-pulse" />
         Loading...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-destructive/10 text-destructive rounded-lg text-xs">
+        <AlertTriangle className="w-3 h-3" />
+        Error loading properties
       </div>
     );
   }
