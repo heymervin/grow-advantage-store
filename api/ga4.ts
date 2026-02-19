@@ -359,6 +359,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const type = (req.query.type as QueryType) || 'overview';
   const startDateParam = req.query.startDate as string | undefined;
   const endDateParam = req.query.endDate as string | undefined;
+  const propertyFilter = req.query.property as string | undefined;
 
   if (!client || !period) {
     return res.status(400).json({ error: 'Missing client or period parameter' });
@@ -368,7 +369,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: `Unknown type: ${type}. Valid types: overview, devices, top_pages, sources, geography, channel_quality, heatmap, video_events, new_returning, landing_pages, stickiness` });
   }
 
-  const cacheKey = `ga4_${client}_${startDateParam || period}_${endDateParam || ''}_${type}`;
+  const cacheKey = `ga4_${client}_${startDateParam || period}_${endDateParam || ''}_${type}_${propertyFilter || 'all'}`;
   const cached = cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
     res.setHeader('X-Cache', 'HIT');
@@ -385,15 +386,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'No GA4 connection found for this client' });
     }
 
+    // Filter to specific property if requested
+    const filteredConnections = propertyFilter
+      ? connections.filter(conn => conn.property_id === propertyFilter)
+      : connections;
+
+    if (filteredConnections.length === 0) {
+      return res.status(404).json({ error: 'Property not found for this client' });
+    }
+
     const { startDate, endDate } = (startDateParam && endDateParam)
       ? { startDate: startDateParam, endDate: endDateParam }
       : getPeriodDates(period);
     // All properties share the same refresh token (same OAuth session)
-    const accessToken = await getAccessToken(connections[0].refresh_token);
+    const accessToken = await getAccessToken(filteredConnections[0].refresh_token);
 
     // Query all properties in parallel and combine results
     const reports = await Promise.all(
-      connections.map(conn =>
+      filteredConnections.map(conn =>
         runGA4Report(conn.property_id, accessToken, startDate, endDate, QUERY_CONFIGS[type])
       )
     );
@@ -403,7 +413,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let headers: unknown[] = [];
 
     reports.forEach((report, i) => {
-      const conn = connections[i];
+      const conn = filteredConnections[i];
       const propertyName = conn.property_name ?? conn.property_id;
       const formatters: Record<QueryType, () => ReturnType<typeof formatOverview>> = {
         overview: () => formatOverview(report, propertyName),
@@ -425,6 +435,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     });
 
     const result = { result: [headers, ...allRows] };
+
+    // Add property breakdown when viewing all properties
+    if (!propertyFilter && type === 'overview') {
+      const breakdown = filteredConnections.map((conn, i) => {
+        const report = reports[i];
+        const totals = (report.rows ?? []).reduce(
+          (acc, row) => ({
+            activeUsers: acc.activeUsers + Number(row.metricValues[0].value),
+            sessions: acc.sessions + Number(row.metricValues[2].value),
+            engagementRate: acc.engagementRate + Number(row.metricValues[3].value),
+            bounceRate: acc.bounceRate + Number(row.metricValues[4].value),
+            count: acc.count + 1,
+          }),
+          { activeUsers: 0, sessions: 0, engagementRate: 0, bounceRate: 0, count: 0 }
+        );
+
+        return {
+          property_id: conn.property_id,
+          property_name: conn.property_name ?? conn.property_id,
+          activeUsers: totals.activeUsers,
+          sessions: totals.sessions,
+          engagementRate: totals.count > 0 ? (totals.engagementRate / totals.count) * 100 : 0,
+          bounceRate: totals.count > 0 ? (totals.bounceRate / totals.count) * 100 : 0,
+        };
+      });
+
+      (result as any).propertyBreakdown = breakdown;
+    }
+
     cache.set(cacheKey, { data: result, timestamp: Date.now() });
     res.setHeader('X-Cache', 'MISS');
     return res.status(200).json(result);
