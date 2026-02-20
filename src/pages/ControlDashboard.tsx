@@ -249,26 +249,28 @@ const ControlDashboard = () => {
 
         setInsights(parsedInsights);
 
-        // Parse general metrics
-        if (!generalData.result || generalData.result.length < 2) {
-          throw new Error("Invalid general metrics response format");
+        // Parse general metrics (non-fatal)
+        try {
+          if (!generalData.result || generalData.result.length < 2) {
+            console.warn("General metrics response missing data:", JSON.stringify(generalData).substring(0, 300));
+          } else {
+            const [generalHeaders, generalValues] = generalData.result;
+            const parsedGeneral: GeneralMetrics = {
+              username: String(generalValues[0]),
+              new_followers: Number(generalValues[1]),
+              accounts_reached: Number(generalValues[2]),
+              profile_views: Number(generalValues[3]),
+              profile_reach: Number(generalValues[4]),
+              profile_links_taps: Number(generalValues[5]),
+              current_followers: Number(generalValues[6]),
+              current_follows: Number(generalValues[7]),
+              profile_media_count: Number(generalValues[8]),
+            };
+            setGeneralMetrics(parsedGeneral);
+          }
+        } catch (generalErr) {
+          console.error("Error parsing general metrics:", generalErr);
         }
-
-        const [generalHeaders, generalValues] = generalData.result;
-
-        const parsedGeneral: GeneralMetrics = {
-          username: String(generalValues[0]),
-          new_followers: Number(generalValues[1]),
-          accounts_reached: Number(generalValues[2]),
-          profile_views: Number(generalValues[3]),
-          profile_reach: Number(generalValues[4]),
-          profile_links_taps: Number(generalValues[5]),
-          current_followers: Number(generalValues[6]),
-          current_follows: Number(generalValues[7]),
-          profile_media_count: Number(generalValues[8]),
-        };
-
-        setGeneralMetrics(parsedGeneral);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Unknown error occurred");
       } finally {
