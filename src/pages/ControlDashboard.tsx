@@ -7,7 +7,6 @@ import {
   Users,
   Eye,
   MousePointerClick,
-  UserPlus,
   Image as ImageIcon,
   Calendar,
   AlertTriangle,
@@ -18,15 +17,8 @@ import {
   MessageCircle,
   Share2,
   Bookmark,
-  Clock,
   Globe,
-  Activity,
   Facebook,
-  Monitor,
-  Smartphone,
-  Tablet,
-  FileText,
-  MapPin
 } from "lucide-react";
 import GA4DashboardContent from "../components/ga4/GA4DashboardContent";
 
@@ -125,48 +117,6 @@ interface FacebookPost {
   pageConsumptions: number;
 }
 
-interface GA4Property {
-  propertyName: string;
-  activeUsers: number;
-  newUsers: number;
-  sessions: number;
-  engagementRate: number;
-  bounceRate: number;
-  avgSessionDuration: number;
-}
-
-interface GA4Response {
-  result: [string[], ...(string | number)[][]];
-}
-
-interface DeviceData {
-  device: string;
-  activeUsers: number;
-  sessions: number;
-  percentage: number;
-}
-
-interface PageData {
-  pageTitle: string;
-  activeUsers: number;
-  screenPageViews: number;
-  bounceRate: number;
-  avgEngagementDuration: number;
-}
-
-interface SourceData {
-  medium: string;
-  label: string;
-  activeUsers: number;
-  percentage: number;
-}
-
-interface CountryData {
-  country: string;
-  activeUsers: number;
-  percentage: number;
-}
-
 const ControlDashboard = () => {
   const [searchParams] = useSearchParams();
   const clientSlug = searchParams.get("client") || "";
@@ -175,16 +125,10 @@ const ControlDashboard = () => {
   const [generalMetrics, setGeneralMetrics] = useState<GeneralMetrics | null>(null);
   const [ageDemographics, setAgeDemographics] = useState<AgeDemographic[]>([]);
   const [genderDemographics, setGenderDemographics] = useState<GenderDemographic[]>([]);
-  const [ga4Data, setGA4Data] = useState<GA4Property[]>([]);
   const [facebookPosts, setFacebookPosts] = useState<FacebookPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [timePeriod, setTimePeriod] = useState<"last7days" | "last30days" | "thismonth">("thismonth");
-  const [overviewData, setOverviewData] = useState<GA4Property[]>([]);
-  const [deviceData, setDeviceData] = useState<DeviceData[]>([]);
-  const [topPages, setTopPages] = useState<PageData[]>([]);
-  const [sources, setSources] = useState<SourceData[]>([]);
-  const [geography, setGeography] = useState<CountryData[]>([]);
   const [activeTab, setActiveTab] = useState<"instagram" | "facebook" | "website">("instagram");
 
   // Client-specific dataslayer configurations
@@ -219,21 +163,18 @@ const ControlDashboard = () => {
       try {
         // Dev mode: call Dataslayer directly, Prod: use proxy
         const isDev = import.meta.env.DEV;
-        const baseUrl = isDev ? '' : '/api/dataslayer-proxy';
 
-        // Fetch content metrics, general metrics, and GA4 data in parallel
+        // Fetch content metrics and general metrics in parallel
         const contentUrl = isDev
           ? clientConfigs[clientSlug].dataslayerUrls[timePeriod]
           : `/api/dataslayer-proxy?client=${clientSlug}&period=${timePeriod}`;
         const generalUrl = isDev
           ? clientConfigs[clientSlug].dataslayerUrls[`general_${timePeriod}`]
           : `/api/dataslayer-proxy?client=${clientSlug}&period=general_${timePeriod}`;
-        const ga4Url = `/api/ga4?client=${clientSlug}&period=${timePeriod}`;
 
-        const [contentResponse, generalResponse, ga4Response] = await Promise.all([
+        const [contentResponse, generalResponse] = await Promise.all([
           fetch(contentUrl),
           fetch(generalUrl),
-          fetch(ga4Url)
         ]);
 
         if (!contentResponse.ok) {
@@ -246,77 +187,6 @@ const ControlDashboard = () => {
 
         const data: DataslayerResponse = await contentResponse.json();
         const generalData: DataslayerResponse = await generalResponse.json();
-
-        // Parse GA4 data (non-blocking if it fails)
-        if (ga4Response.ok) {
-          try {
-            const ga4RawData: GA4Response = await ga4Response.json();
-
-            if (ga4RawData.result && ga4RawData.result.length > 1) {
-              const [headers, ...rows] = ga4RawData.result;
-
-              // Aggregate daily data by property name
-              const propertyMap = new Map<string, {
-                activeUsers: number;
-                newUsers: number;
-                sessions: number;
-                engagementRate: number[];
-                bounceRate: number[];
-                avgSessionDuration: number[];
-                count: number;
-              }>();
-
-              rows.forEach(row => {
-                const propertyName = String(row[1]);
-                const activeUsers = Number(row[2]) || 0;
-                const newUsers = Number(row[3]) || 0;
-                const sessions = Number(row[4]) || 0;
-                const engagementRate = Number(row[5]) || 0;
-                const bounceRate = Number(row[6]) || 0;
-                const avgSessionDuration = Number(row[7]) || 0;
-
-                if (!propertyMap.has(propertyName)) {
-                  propertyMap.set(propertyName, {
-                    activeUsers: 0,
-                    newUsers: 0,
-                    sessions: 0,
-                    engagementRate: [],
-                    bounceRate: [],
-                    avgSessionDuration: [],
-                    count: 0
-                  });
-                }
-
-                const prop = propertyMap.get(propertyName)!;
-                prop.activeUsers += activeUsers;
-                prop.newUsers += newUsers;
-                prop.sessions += sessions;
-                prop.engagementRate.push(engagementRate);
-                prop.bounceRate.push(bounceRate);
-                prop.avgSessionDuration.push(avgSessionDuration);
-                prop.count += 1;
-              });
-
-              // Convert map to array and calculate averages
-              const ga4Properties: GA4Property[] = Array.from(propertyMap.entries()).map(([propertyName, data]) => ({
-                propertyName,
-                activeUsers: data.activeUsers,
-                newUsers: data.newUsers,
-                sessions: data.sessions,
-                engagementRate: data.engagementRate.reduce((a, b) => a + b, 0) / data.count,
-                bounceRate: data.bounceRate.reduce((a, b) => a + b, 0) / data.count,
-                avgSessionDuration: data.avgSessionDuration.reduce((a, b) => a + b, 0) / data.count,
-              }));
-
-              setGA4Data(ga4Properties);
-            }
-          } catch (ga4Error) {
-            console.error('Error parsing GA4 data:', ga4Error);
-            setGA4Data([]);
-          }
-        } else {
-          setGA4Data([]);
-        }
 
         // Parse dataslayer response format
         // result[0] = headers, result[1] = values
@@ -504,105 +374,6 @@ const ControlDashboard = () => {
     };
 
     fetchFacebook();
-  }, [clientSlug, timePeriod]);
-
-  // Fetch GA4 website analytics (devices, pages, sources, geography)
-  useEffect(() => {
-    if (!clientSlug || !clientConfigs[clientSlug]) return;
-
-    const base = `/api/dataslayer-proxy?client=${clientSlug}`;
-
-    Promise.all([
-      fetch(`${base}&period=ga4_${timePeriod}`).then(r => r.ok ? r.json() : null),
-      fetch(`${base}&type=ga4_devices&period=${timePeriod}`).then(r => r.ok ? r.json() : null),
-      fetch(`${base}&type=ga4_top_pages&period=${timePeriod}`).then(r => r.ok ? r.json() : null),
-      fetch(`${base}&type=ga4_sources&period=${timePeriod}`).then(r => r.ok ? r.json() : null),
-      fetch(`${base}&type=ga4_geography&period=${timePeriod}`).then(r => r.ok ? r.json() : null),
-    ]).then(([overview, devices, pages, srcs, geo]) => {
-      // Parse overview
-      if (overview?.result?.length > 1) {
-        const [, ...rows] = overview.result;
-        const propMap = new Map<string, { activeUsers: number; newUsers: number; sessions: number; engagementRate: number[]; bounceRate: number[]; avgSessionDuration: number[]; count: number }>();
-        rows.forEach((row: (string | number)[]) => {
-          const name = String(row[1]);
-          if (!propMap.has(name)) propMap.set(name, { activeUsers: 0, newUsers: 0, sessions: 0, engagementRate: [], bounceRate: [], avgSessionDuration: [], count: 0 });
-          const p = propMap.get(name)!;
-          p.activeUsers += Number(row[2]); p.newUsers += Number(row[3]); p.sessions += Number(row[4]);
-          p.engagementRate.push(Number(row[5])); p.bounceRate.push(Number(row[6])); p.avgSessionDuration.push(Number(row[7])); p.count++;
-        });
-        setOverviewData(Array.from(propMap.entries()).map(([propertyName, d]) => ({
-          propertyName, activeUsers: d.activeUsers, newUsers: d.newUsers, sessions: d.sessions,
-          engagementRate: d.engagementRate.reduce((a, b) => a + b, 0) / d.count,
-          bounceRate: d.bounceRate.reduce((a, b) => a + b, 0) / d.count,
-          avgSessionDuration: d.avgSessionDuration.reduce((a, b) => a + b, 0) / d.count,
-        })));
-      }
-
-      // Parse devices
-      if (devices?.result?.length > 1) {
-        const [, ...rows] = devices.result;
-        const devMap = new Map<string, { activeUsers: number; sessions: number }>();
-        rows.forEach((row: (string | number)[]) => {
-          const dev = String(row[1]);
-          if (!devMap.has(dev)) devMap.set(dev, { activeUsers: 0, sessions: 0 });
-          const d = devMap.get(dev)!;
-          d.activeUsers += Number(row[3]); d.sessions += Number(row[4]);
-        });
-        const total = Array.from(devMap.values()).reduce((s, d) => s + d.activeUsers, 0);
-        setDeviceData(Array.from(devMap.entries()).map(([device, d]) => ({
-          device, activeUsers: d.activeUsers, sessions: d.sessions,
-          percentage: total > 0 ? (d.activeUsers / total) * 100 : 0,
-        })).sort((a, b) => b.activeUsers - a.activeUsers));
-      }
-
-      // Parse top pages
-      if (pages?.result?.length > 1) {
-        const [, ...rows] = pages.result;
-        const pageMap = new Map<string, { activeUsers: number; screenPageViews: number; bounceRate: number[]; avgEngagementDuration: number[]; count: number }>();
-        rows.forEach((row: (string | number)[]) => {
-          const title = String(row[2]);
-          if (!pageMap.has(title)) pageMap.set(title, { activeUsers: 0, screenPageViews: 0, bounceRate: [], avgEngagementDuration: [], count: 0 });
-          const p = pageMap.get(title)!;
-          p.activeUsers += Number(row[3]); p.screenPageViews += Number(row[4]);
-          p.avgEngagementDuration.push(Number(row[5])); p.bounceRate.push(Number(row[6])); p.count++;
-        });
-        setTopPages(Array.from(pageMap.entries()).map(([pageTitle, d]) => ({
-          pageTitle, activeUsers: d.activeUsers, screenPageViews: d.screenPageViews,
-          bounceRate: d.bounceRate.reduce((a, b) => a + b, 0) / d.count,
-          avgEngagementDuration: d.avgEngagementDuration.reduce((a, b) => a + b, 0) / d.count,
-        })).sort((a, b) => b.screenPageViews - a.screenPageViews).slice(0, 10));
-      }
-
-      // Parse sources
-      if (srcs?.result?.length > 1) {
-        const [, ...rows] = srcs.result;
-        const MEDIUM_LABELS: Record<string, string> = { "(none)": "Direct", "organic": "Organic Search", "referral": "Referral", "email": "Email", "rss": "RSS", "(not set)": "Other" };
-        const srcMap = new Map<string, number>();
-        rows.forEach((row: (string | number)[]) => {
-          const medium = String(row[0]);
-          srcMap.set(medium, (srcMap.get(medium) || 0) + Number(row[2]));
-        });
-        const total = Array.from(srcMap.values()).reduce((s, v) => s + v, 0);
-        setSources(Array.from(srcMap.entries()).filter(([m]) => m !== "(not set)").map(([medium, activeUsers]) => ({
-          medium, label: MEDIUM_LABELS[medium] || medium, activeUsers,
-          percentage: total > 0 ? (activeUsers / total) * 100 : 0,
-        })).sort((a, b) => b.activeUsers - a.activeUsers));
-      }
-
-      // Parse geography
-      if (geo?.result?.length > 1) {
-        const [, ...rows] = geo.result;
-        const countryMap = new Map<string, number>();
-        rows.forEach((row: (string | number)[]) => {
-          const country = String(row[0]);
-          if (country && country !== "(not set)") countryMap.set(country, (countryMap.get(country) || 0) + Number(row[3]));
-        });
-        const total = Array.from(countryMap.values()).reduce((s, v) => s + v, 0);
-        setGeography(Array.from(countryMap.entries()).map(([country, activeUsers]) => ({
-          country, activeUsers, percentage: total > 0 ? (activeUsers / total) * 100 : 0,
-        })).sort((a, b) => b.activeUsers - a.activeUsers).slice(0, 8));
-      }
-    }).catch(err => console.error('GA4 fetch error:', err));
   }, [clientSlug, timePeriod]);
 
   if (!clientSlug) {
