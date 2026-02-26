@@ -76,6 +76,11 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
         throw new Error('Redirecting to reconnect...');
       }
 
+      // No connection configured for this client
+      if (res.status === 404 && data.error?.includes('No GA4 connection')) {
+        throw new Error('NOT_CONNECTED');
+      }
+
       if (!res.ok) {
         throw new Error(data.message || data.error || 'Request failed');
       }
@@ -137,6 +142,24 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
           <Globe className="w-6 h-6 text-white" />
         </motion.div>
         <p className="text-muted-foreground text-sm">Loading website analytics...</p>
+      </div>
+    </div>
+  );
+
+  if (error === 'NOT_CONNECTED') return (
+    <div className="flex items-center justify-center py-24">
+      <div className="text-center max-w-sm">
+        <Globe className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+        <p className="text-foreground font-semibold mb-1">Google Analytics Not Connected</p>
+        <p className="text-muted-foreground text-sm mb-5">
+          Connect your Google Analytics account to view website analytics for this client.
+        </p>
+        <a
+          href={`/connect?client=${clientSlug}`}
+          className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+        >
+          Connect Google Analytics
+        </a>
       </div>
     </div>
   );
