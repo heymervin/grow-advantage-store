@@ -33,19 +33,70 @@ function getPeriodDates(period: string): { startDate: string; endDate: string } 
   };
 }
 
-async function getAccessToken(refreshToken: string): Promise<string> {
+async function getAccessToken(refreshToken: string, clientSlug: string): Promise<string> {
+  // Check if credentials are set
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    throw new Error('Missing Google OAuth credentials in environment variables');
+  }
+
   const res = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: process.env.GOOGLE_CLIENT_ID!,
-      client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
   });
-  if (!res.ok) throw new Error(`Token refresh failed: ${res.status}`);
-  const data = await res.json() as { access_token: string };
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    let errorDetails;
+    try {
+      errorDetails = JSON.parse(errorBody);
+    } catch {
+      errorDetails = errorBody;
+    }
+
+    console.error('Token refresh failed:', {
+      status: res.status,
+      client: clientSlug,
+      error: errorDetails,
+      hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+    });
+
+    // Provide specific error messages
+    if (res.status === 400) {
+      const errorMsg = typeof errorDetails === 'object' ? errorDetails.error : errorDetails;
+      if (errorMsg?.includes('invalid_grant')) {
+        throw new Error('Refresh token is invalid or expired. Please re-authenticate via /connect page.');
+      }
+      throw new Error(`Token refresh failed: ${errorMsg || 'Invalid request'}. Check Google OAuth credentials.`);
+    }
+
+    throw new Error(`Token refresh failed: ${res.status} - ${JSON.stringify(errorDetails)}`);
+  }
+
+  const data = await res.json() as { access_token: string; refresh_token?: string };
+
+  // If Google rotated the refresh token, update it
+  if (data.refresh_token && data.refresh_token !== refreshToken) {
+    console.log(`Updating rotated refresh token for client: ${clientSlug}`);
+    await supabase
+      .from('client_ga4_connections')
+      .update({
+        refresh_token: data.refresh_token,
+        updated_at: new Date().toISOString()
+      })
+      .eq('client_slug', clientSlug)
+      .eq('refresh_token', refreshToken)
+      .then(({ error }) => {
+        if (error) console.error('Failed to update refresh token:', error);
+      });
+  }
+
   return data.access_token;
 }
 
@@ -399,7 +450,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       ? { startDate: startDateParam, endDate: endDateParam }
       : getPeriodDates(period);
     // All properties share the same refresh token (same OAuth session)
-    const accessToken = await getAccessToken(filteredConnections[0].refresh_token);
+    const accessToken = await getAccessToken(filteredConnections[0].refresh_token, client);
 
     // Query all properties in parallel and combine results
     const reports = await Promise.all(
