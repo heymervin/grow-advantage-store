@@ -65,19 +65,37 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
     const { startDate, endDate } = getPreviousPeriodDates(period);
     const prevParams = `startDate=${startDate}&endDate=${endDate}&period=${period}`;
 
+    const fetchWithAuthCheck = async (url: string) => {
+      const res = await fetch(url);
+      const data = await res.json();
+
+      // Check if re-authentication is needed
+      if (res.status === 401 && data.needsReauth) {
+        // Redirect to connect page
+        window.location.href = data.reconnectUrl || `/connect?client=${clientSlug}`;
+        throw new Error('Redirecting to reconnect...');
+      }
+
+      if (!res.ok) {
+        throw new Error(data.message || data.error || 'Request failed');
+      }
+
+      return data;
+    };
+
     Promise.all([
-      fetch(`${base}&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=devices&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=top_pages&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=sources&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=geography&period=${period}`).then(r => r.json()),
-      fetch(`${base}&${prevParams}`).then(r => r.json()),
-      fetch(`${base}&type=channel_quality&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=heatmap&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=video_events&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=new_returning&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=landing_pages&period=${period}`).then(r => r.json()),
-      fetch(`${base}&type=stickiness&period=${period}`).then(r => r.json()),
+      fetchWithAuthCheck(`${base}&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=devices&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=top_pages&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=sources&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=geography&period=${period}`),
+      fetchWithAuthCheck(`${base}&${prevParams}`),
+      fetchWithAuthCheck(`${base}&type=channel_quality&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=heatmap&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=video_events&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=new_returning&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=landing_pages&period=${period}`),
+      fetchWithAuthCheck(`${base}&type=stickiness&period=${period}`),
     ])
       .then(([overview, devices, pages, sources, geography, prevOverview,
               channelQuality, heatmap, videoEvents, newReturning, landingPages, stickiness]) => {

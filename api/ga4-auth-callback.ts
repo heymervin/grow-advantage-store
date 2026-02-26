@@ -71,17 +71,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.redirect(`/connect?client=${clientSlug}&error=no_properties`);
     }
 
-    const property = properties[0];
+    // Store all properties for this client (upsert each one)
+    const upserts = properties.map(property => ({
+      client_slug: clientSlug,
+      property_id: property.id,
+      property_name: property.name,
+      refresh_token,
+      updated_at: new Date().toISOString(),
+    }));
 
     const { error: dbError } = await supabase
       .from('client_ga4_connections')
-      .upsert({
-        client_slug: clientSlug,
-        property_id: property.id,
-        property_name: property.name,
-        refresh_token,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'client_slug' });
+      .upsert(upserts, { onConflict: 'client_slug,property_id' });
 
     if (dbError) throw new Error(dbError.message);
 

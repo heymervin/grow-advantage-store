@@ -71,7 +71,17 @@ async function getAccessToken(refreshToken: string, clientSlug: string): Promise
     if (res.status === 400) {
       const errorMsg = typeof errorDetails === 'object' ? errorDetails.error : errorDetails;
       if (errorMsg?.includes('invalid_grant')) {
-        throw new Error('Refresh token is invalid or expired. Please re-authenticate via /connect page.');
+        // Clear the invalid token from database
+        console.log(`Clearing invalid refresh token for client: ${clientSlug}`);
+        await supabase
+          .from('client_ga4_connections')
+          .delete()
+          .eq('client_slug', clientSlug)
+          .then(({ error }) => {
+            if (error) console.error('Failed to clear invalid token:', error);
+          });
+
+        throw new Error('AUTH_REQUIRED: Token has been revoked. Please reconnect your Google Analytics account.');
       }
       throw new Error(`Token refresh failed: ${errorMsg || 'Invalid request'}. Check Google OAuth credentials.`);
     }
@@ -534,9 +544,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json(result);
   } catch (err) {
     console.error('GA4 API error:', err);
+    const message = err instanceof Error ? err.message : 'Unknown error';
+
+    // If token is invalid, return 401 so frontend can prompt re-auth
+    if (message.includes('AUTH_REQUIRED')) {
+      return res.status(401).json({
+        error: 'Authentication required',
+        message: message.replace('AUTH_REQUIRED: ', ''),
+        needsReauth: true,
+        reconnectUrl: `/connect?client=${client}`,
+      });
+    }
+
     return res.status(500).json({
       error: 'Failed to fetch GA4 data',
-      message: err instanceof Error ? err.message : 'Unknown error',
+      message,
     });
   }
 }
