@@ -45,6 +45,13 @@ const SectionLoader = ({ loading, children, height = 'h-48' }: { loading: boolea
   );
 };
 
+const SectionHeader = ({ title }: { title: string }) => (
+  <div className="flex items-center gap-3 pt-2">
+    <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{title}</span>
+    <div className="flex-1 h-px bg-border" />
+  </div>
+);
+
 interface Props {
   clientSlug: string;
 }
@@ -72,6 +79,13 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
   // Per-section loading flags
   const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
   const setDone = (key: string) => setLoadingMap(prev => ({ ...prev, [key]: false }));
+
+  // Auto-select the only property when there is exactly one
+  useEffect(() => {
+    if (propertyBreakdown.length === 1 && selectedProperty === null) {
+      setSelectedProperty(propertyBreakdown[0].property_id);
+    }
+  }, [propertyBreakdown, selectedProperty]);
 
   useEffect(() => {
     if (!clientSlug) return;
@@ -274,6 +288,9 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
       {/* Detailed charts only when a specific property is selected */}
       {selectedProperty && (
         <>
+          {/* ── Tier 1: Your Traffic ─────────────────────────────────────── */}
+          <SectionHeader title="Your Traffic" />
+
           <SectionLoader loading={loadingMap.overview} height="h-32">
             {overview && (
               <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
@@ -289,6 +306,9 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
               </motion.div>
             )}
           </SectionLoader>
+
+          {/* ── Tier 2: Where It Came From ───────────────────────────────── */}
+          <SectionHeader title="Where It Came From" />
 
           <div className="grid md:grid-cols-2 gap-4">
             <SectionLoader loading={loadingMap.sources} height="h-48">
@@ -307,6 +327,9 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
             </SectionLoader>
           </div>
 
+          {/* ── Tier 3: What They Did ────────────────────────────────────── */}
+          <SectionHeader title="What They Did" />
+
           <div className="grid md:grid-cols-2 gap-4">
             <SectionLoader loading={loadingMap.newReturning} height="h-48">
               {newReturning && (
@@ -324,41 +347,28 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
             </SectionLoader>
           </div>
 
-          <SectionLoader loading={loadingMap.channelQuality} height="h-48">
-            {channelQuality && (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                <ChannelQualityChart data={channelQuality} />
-              </motion.div>
-            )}
-          </SectionLoader>
-
           <SectionLoader loading={loadingMap.landingPages} height="h-48">
             {landingPages && (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                 <LandingPagesTable data={landingPages} />
               </motion.div>
             )}
           </SectionLoader>
 
-          <SectionLoader loading={loadingMap.videoEvents} height="h-32">
-            {videoEvents && videoEvents.length > 0 && (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-                <VideoWidget data={videoEvents} />
-              </motion.div>
-            )}
-          </SectionLoader>
+          {/* ── Tier 4: When & Where ─────────────────────────────────────── */}
+          <SectionHeader title="When & Where" />
 
           <div className="grid md:grid-cols-2 gap-4">
             <SectionLoader loading={loadingMap.devices} height="h-48">
               {devices && (
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
                   <DeviceDonut devices={devices} />
                 </motion.div>
               )}
             </SectionLoader>
             <SectionLoader loading={loadingMap.geography} height="h-48">
               {geography && (
-                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
                   <GeographyList countries={geography} />
                 </motion.div>
               )}
@@ -367,8 +377,27 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
 
           <SectionLoader loading={loadingMap.heatmap} height="h-48">
             {heatmap && (
-              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
                 <HeatmapChart data={heatmap} />
+              </motion.div>
+            )}
+          </SectionLoader>
+
+          {/* ── Tier 5: Advanced ─────────────────────────────────────────── */}
+          <SectionHeader title="Advanced" />
+
+          <SectionLoader loading={loadingMap.channelQuality} height="h-48">
+            {channelQuality && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                <ChannelQualityChart data={channelQuality} />
+              </motion.div>
+            )}
+          </SectionLoader>
+
+          <SectionLoader loading={loadingMap.videoEvents} height="h-32">
+            {videoEvents && videoEvents.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+                <VideoWidget data={videoEvents} />
               </motion.div>
             )}
           </SectionLoader>

@@ -99,26 +99,36 @@ export function PropertyGridView({ properties, onPropertyClick, loading, error }
 
   // Grid view
   return (
-    <div
-      className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6"
-      role="region"
-      aria-label="GA4 Properties Overview"
-      aria-live="polite"
-    >
-      {sortedProperties.map((property) => (
-        <PropertyMiniCard
-          key={property.property_id}
-          propertyId={property.property_id}
-          propertyName={property.property_name}
-          activeUsers={property.activeUsers}
-          sessions={property.sessions}
-          engagementRate={property.engagementRate}
-          bounceRate={property.bounceRate}
-          dailyData={property.dailyData}
-          previousPeriodUsers={property.previousPeriodUsers}
-          onClick={() => onPropertyClick(property.property_id)}
-        />
-      ))}
+    <div className="space-y-4">
+      {/* Page header */}
+      <div>
+        <h2 className="text-xl font-bold text-foreground">Your Websites</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Select a website to view its full analytics dashboard
+        </p>
+      </div>
+
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6"
+        role="region"
+        aria-label="GA4 Properties Overview"
+        aria-live="polite"
+      >
+        {sortedProperties.map((property) => (
+          <PropertyMiniCard
+            key={property.property_id}
+            propertyId={property.property_id}
+            propertyName={property.property_name}
+            activeUsers={property.activeUsers}
+            sessions={property.sessions}
+            engagementRate={property.engagementRate}
+            bounceRate={property.bounceRate}
+            dailyData={property.dailyData}
+            previousPeriodUsers={property.previousPeriodUsers}
+            onClick={() => onPropertyClick(property.property_id)}
+          />
+        ))}
+      </div>
     </div>
   );
 }

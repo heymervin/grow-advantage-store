@@ -1,6 +1,6 @@
 import React from 'react';
 import { TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
-import { LineChart, Line } from 'recharts';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { calculateHealthStatus } from './property-grid-utils';
 
 interface DailyDataPoint {
@@ -87,12 +87,12 @@ export const PropertyMiniCard = React.memo(function PropertyMiniCard({
     <div
       onClick={onClick}
       className={`
-        bg-card border ${healthStyles}
+        group bg-card border ${healthStyles}
         rounded-2xl p-4 lg:p-5
         hover:shadow-lg transition-shadow duration-200 cursor-pointer
         focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
         w-full min-h-[180px] lg:min-h-[200px]
-        flex flex-col justify-between
+        flex flex-col justify-between overflow-hidden
       `}
       role="button"
       tabIndex={0}
@@ -105,7 +105,7 @@ export const PropertyMiniCard = React.memo(function PropertyMiniCard({
       aria-label={`View details for ${propertyName}`}
     >
       {/* Header: Property Name */}
-      <div className="text-sm font-bold text-foreground truncate flex items-center gap-1.5" title={propertyName}>
+      <div className="text-base font-bold text-foreground truncate flex items-center gap-1.5" title={propertyName}>
         {propertyName}
         {health === 'critical' && (
           <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0" aria-label="Critical status" />
@@ -133,18 +133,20 @@ export const PropertyMiniCard = React.memo(function PropertyMiniCard({
       </div>
 
       {/* Sparkline */}
-      <div className="h-10 -mx-1">
+      <div className="h-10 -mx-1 overflow-hidden">
         {dailyData.length > 0 ? (
-          <LineChart width={318} height={40} data={dailyData}>
-            <Line
-              type="monotone"
-              dataKey="activeUsers"
-              stroke={isPositiveTrend ? '#10b981' : '#ef4444'}
-              strokeWidth={1.5}
-              dot={false}
-              isAnimationActive={false}
-            />
-          </LineChart>
+          <ResponsiveContainer width="100%" height={40}>
+            <LineChart data={dailyData}>
+              <Line
+                type="monotone"
+                dataKey="activeUsers"
+                stroke={isPositiveTrend ? '#10b981' : '#ef4444'}
+                strokeWidth={1.5}
+                dot={false}
+                isAnimationActive={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         ) : (
           <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
             No trend data
@@ -152,10 +154,17 @@ export const PropertyMiniCard = React.memo(function PropertyMiniCard({
         )}
       </div>
 
-      {/* Secondary Metrics */}
+      {/* Secondary Metrics + hover CTA */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">
         <span>Sessions: <span className="font-medium text-foreground">{formatNumber(sessions)}</span></span>
         <span>Engaged: <span className="font-medium text-foreground">{formatPercent(engagementRate)}</span></span>
+      </div>
+
+      {/* View Dashboard hint — visible on hover */}
+      <div className="flex justify-end mt-1">
+        <span className="text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          View Dashboard &rarr;
+        </span>
       </div>
     </div>
   );
