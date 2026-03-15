@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Globe, AlertTriangle, Calendar } from 'lucide-react';
-import type { DashboardData, ComparisonData, Period } from './types';
+import type { OverviewMetrics, DeviceData, PageData, SourceData, CountryData, Period } from './types';
 import { getPreviousPeriodDates } from './utils';
 import {
   parseOverview, parseDevices, parsePages, parseSources, parseGeography,
@@ -33,14 +33,17 @@ const PERIODS: { value: Period; label: string }[] = [
   { value: 'thismonth', label: 'This Month' },
 ];
 
-interface ExtendedData extends DashboardData {
-  channelQuality: ChannelQualityRow[];
-  heatmap: HeatmapRow[];
-  videoEvents: VideoEventRow[];
-  newReturning: NewReturningSegment[];
-  landingPages: LandingPageRow[];
-  stickiness: StickinessData | null;
-}
+const SectionLoader = ({ loading, children, height = 'h-48' }: { loading: boolean; children: React.ReactNode; height?: string }) => {
+  if (!loading) return <>{children}</>;
+  return (
+    <div className={`flex items-center justify-center ${height} bg-card border border-border rounded-xl`}>
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <span className="text-sm">Loading...</span>
+      </div>
+    </div>
+  );
+};
 
 interface Props {
   clientSlug: string;
@@ -48,90 +51,142 @@ interface Props {
 
 const GA4DashboardContent = ({ clientSlug }: Props) => {
   const [period, setPeriod] = useState<Period>('thismonth');
-  const [data, setData] = useState<ExtendedData | null>(null);
-  const [comparison, setComparison] = useState<ComparisonData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Section data — each loads independently
+  const [overview, setOverview] = useState<OverviewMetrics | null>(null);
+  const [comparison, setComparison] = useState<OverviewMetrics | null>(null);
+  const [devices, setDevices] = useState<DeviceData[] | null>(null);
+  const [pages, setPages] = useState<PageData[] | null>(null);
+  const [sources, setSources] = useState<SourceData[] | null>(null);
+  const [geography, setGeography] = useState<CountryData[] | null>(null);
+  const [channelQuality, setChannelQuality] = useState<ChannelQualityRow[] | null>(null);
+  const [heatmap, setHeatmap] = useState<HeatmapRow[] | null>(null);
+  const [videoEvents, setVideoEvents] = useState<VideoEventRow[] | null>(null);
+  const [newReturning, setNewReturning] = useState<NewReturningSegment[] | null>(null);
+  const [landingPages, setLandingPages] = useState<LandingPageRow[] | null>(null);
+  const [stickiness, setStickinessState] = useState<StickinessData | null>(null);
   const [propertyBreakdown, setPropertyBreakdown] = useState<any[]>([]);
+
+  // Per-section loading flags
+  const [loadingMap, setLoadingMap] = useState<Record<string, boolean>>({});
+  const setDone = (key: string) => setLoadingMap(prev => ({ ...prev, [key]: false }));
 
   useEffect(() => {
     if (!clientSlug) return;
-    setLoading(true);
+
+    // Reset everything to loading state
     setError(null);
+    setOverview(null);
+    setComparison(null);
+    setDevices(null);
+    setPages(null);
+    setSources(null);
+    setGeography(null);
+    setChannelQuality(null);
+    setHeatmap(null);
+    setVideoEvents(null);
+    setNewReturning(null);
+    setLandingPages(null);
+    setStickinessState(null);
+    setPropertyBreakdown([]);
+    setLoadingMap({
+      overview: true, comparison: true, devices: true, pages: true,
+      sources: true, geography: true, channelQuality: true, heatmap: true,
+      videoEvents: true, newReturning: true, landingPages: true, stickiness: true,
+    });
 
     const propertyParam = selectedProperty ? `&property=${selectedProperty}` : '';
     const base = `/api/ga4?client=${clientSlug}${propertyParam}`;
     const { startDate, endDate } = getPreviousPeriodDates(period);
     const prevParams = `startDate=${startDate}&endDate=${endDate}&period=${period}`;
 
-    const fetchWithAuthCheck = async (url: string) => {
+    const fetchSection = async (url: string) => {
       const res = await fetch(url);
       const data = await res.json();
 
-      // Check if re-authentication is needed
       if (res.status === 401 && data.needsReauth) {
-        // Redirect to connect page
         window.location.href = data.reconnectUrl || `/connect?client=${clientSlug}`;
         throw new Error('Redirecting to reconnect...');
       }
-
-      // No connection configured for this client
       if (res.status === 404 && data.error?.includes('No GA4 connection')) {
+        setError('NOT_CONNECTED');
         throw new Error('NOT_CONNECTED');
       }
-
-      if (!res.ok) {
-        throw new Error(data.message || data.error || 'Request failed');
-      }
-
+      if (!res.ok) throw new Error(data.message || data.error || 'Request failed');
       return data;
     };
 
-    Promise.all([
-      fetchWithAuthCheck(`${base}&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=devices&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=top_pages&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=sources&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=geography&period=${period}`),
-      fetchWithAuthCheck(`${base}&${prevParams}`),
-      fetchWithAuthCheck(`${base}&type=channel_quality&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=heatmap&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=video_events&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=new_returning&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=landing_pages&period=${period}`),
-      fetchWithAuthCheck(`${base}&type=stickiness&period=${period}`),
-    ])
-      .then(([overview, devices, pages, sources, geography, prevOverview,
-              channelQuality, heatmap, videoEvents, newReturning, landingPages, stickiness]) => {
-        setData({
-          overview: parseOverview(overview),
-          devices: parseDevices(devices),
-          pages: parsePages(pages),
-          sources: parseSources(sources),
-          geography: parseGeography(geography),
-          channelQuality: parseChannelQuality(channelQuality),
-          heatmap: parseHeatmap(heatmap),
-          videoEvents: parseVideoEvents(videoEvents),
-          newReturning: parseNewReturning(newReturning),
-          landingPages: parseLandingPages(landingPages),
-          stickiness: parseStickiness(stickiness),
-        });
-        setComparison({ overview: parseOverview(prevOverview) });
-        if (overview.propertyBreakdown) {
-          setPropertyBreakdown(overview.propertyBreakdown);
-        } else {
-          setPropertyBreakdown([]);
-        }
-        setLoading(false);
+    // Fire all fetches independently — each resolves and renders on its own
+    fetchSection(`${base}&period=${period}`)
+      .then(data => {
+        setOverview(parseOverview(data));
+        setPropertyBreakdown(data.propertyBreakdown ?? []);
       })
-      .catch(err => {
-        setError(err.message);
-        setLoading(false);
-      });
+      .catch(() => {})
+      .finally(() => setDone('overview'));
+
+    fetchSection(`${base}&${prevParams}`)
+      .then(data => setComparison(parseOverview(data)))
+      .catch(() => {})
+      .finally(() => setDone('comparison'));
+
+    fetchSection(`${base}&type=devices&period=${period}`)
+      .then(data => setDevices(parseDevices(data)))
+      .catch(() => {})
+      .finally(() => setDone('devices'));
+
+    fetchSection(`${base}&type=top_pages&period=${period}`)
+      .then(data => setPages(parsePages(data)))
+      .catch(() => {})
+      .finally(() => setDone('pages'));
+
+    fetchSection(`${base}&type=sources&period=${period}`)
+      .then(data => setSources(parseSources(data)))
+      .catch(() => {})
+      .finally(() => setDone('sources'));
+
+    fetchSection(`${base}&type=geography&period=${period}`)
+      .then(data => setGeography(parseGeography(data)))
+      .catch(() => {})
+      .finally(() => setDone('geography'));
+
+    fetchSection(`${base}&type=channel_quality&period=${period}`)
+      .then(data => setChannelQuality(parseChannelQuality(data)))
+      .catch(() => {})
+      .finally(() => setDone('channelQuality'));
+
+    fetchSection(`${base}&type=heatmap&period=${period}`)
+      .then(data => setHeatmap(parseHeatmap(data)))
+      .catch(() => {})
+      .finally(() => setDone('heatmap'));
+
+    fetchSection(`${base}&type=video_events&period=${period}`)
+      .then(data => setVideoEvents(parseVideoEvents(data)))
+      .catch(() => {})
+      .finally(() => setDone('videoEvents'));
+
+    fetchSection(`${base}&type=new_returning&period=${period}`)
+      .then(data => setNewReturning(parseNewReturning(data)))
+      .catch(() => {})
+      .finally(() => setDone('newReturning'));
+
+    fetchSection(`${base}&type=landing_pages&period=${period}`)
+      .then(data => setLandingPages(parseLandingPages(data)))
+      .catch(() => {})
+      .finally(() => setDone('landingPages'));
+
+    fetchSection(`${base}&type=stickiness&period=${period}`)
+      .then(data => setStickinessState(parseStickiness(data)))
+      .catch(() => {})
+      .finally(() => setDone('stickiness'));
   }, [clientSlug, period, selectedProperty]);
 
-  if (loading) return (
+  // Show a full-page spinner only until the overview (hero stats) loads for the first time
+  const initialLoading = loadingMap.overview && overview === null;
+
+  if (initialLoading) return (
     <div className="flex items-center justify-center py-24">
       <div className="flex flex-col items-center gap-4">
         <motion.div
@@ -164,11 +219,11 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
     </div>
   );
 
-  if (error || !data) return (
+  if (error && error !== 'NOT_CONNECTED') return (
     <div className="flex items-center justify-center py-24">
       <div className="text-center">
         <AlertTriangle className="w-10 h-10 text-amber-500 mx-auto mb-3" />
-        <p className="text-muted-foreground">{error ?? 'No data available'}</p>
+        <p className="text-muted-foreground">{error}</p>
       </div>
     </div>
   );
@@ -202,71 +257,121 @@ const GA4DashboardContent = ({ clientSlug }: Props) => {
         />
       </div>
 
-      {/* Show grid view when viewing all properties */}
-      {!selectedProperty && propertyBreakdown.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-          <PropertyGridView
-            properties={propertyBreakdown}
-            onPropertyClick={setSelectedProperty}
-          />
-        </motion.div>
+      {/* Property grid view when no specific property selected */}
+      {!selectedProperty && (
+        <SectionLoader loading={loadingMap.overview} height="h-48">
+          {propertyBreakdown.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+              <PropertyGridView
+                properties={propertyBreakdown}
+                onPropertyClick={setSelectedProperty}
+              />
+            </motion.div>
+          )}
+        </SectionLoader>
       )}
 
-      {/* Show HeroStats and detailed charts only when viewing a single property */}
+      {/* Detailed charts only when a specific property is selected */}
       {selectedProperty && (
         <>
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
-            <HeroStats current={data.overview} previous={comparison?.overview ?? null} />
-          </motion.div>
+          <SectionLoader loading={loadingMap.overview} height="h-32">
+            {overview && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+                <HeroStats current={overview} previous={comparison ?? null} />
+              </motion.div>
+            )}
+          </SectionLoader>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-            <TrendChart current={data.overview} previous={comparison?.overview ?? null} />
-          </motion.div>
+          <SectionLoader loading={loadingMap.overview} height="h-48">
+            {overview && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
+                <TrendChart current={overview} previous={comparison ?? null} />
+              </motion.div>
+            )}
+          </SectionLoader>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-          <ChannelChart sources={data.sources} />
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-          <TopPagesList pages={data.pages} />
-        </motion.div>
-      </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <SectionLoader loading={loadingMap.sources} height="h-48">
+              {sources && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                  <ChannelChart sources={sources} />
+                </motion.div>
+              )}
+            </SectionLoader>
+            <SectionLoader loading={loadingMap.pages} height="h-48">
+              {pages && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                  <TopPagesList pages={pages} />
+                </motion.div>
+              )}
+            </SectionLoader>
+          </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-          <NewReturningWidget data={data.newReturning} />
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-          <StickinessCard data={data.stickiness} />
-        </motion.div>
-      </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <SectionLoader loading={loadingMap.newReturning} height="h-48">
+              {newReturning && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                  <NewReturningWidget data={newReturning} />
+                </motion.div>
+              )}
+            </SectionLoader>
+            <SectionLoader loading={loadingMap.stickiness} height="h-48">
+              {stickiness !== null && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                  <StickinessCard data={stickiness} />
+                </motion.div>
+              )}
+            </SectionLoader>
+          </div>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-        <ChannelQualityChart data={data.channelQuality} />
-      </motion.div>
+          <SectionLoader loading={loadingMap.channelQuality} height="h-48">
+            {channelQuality && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <ChannelQualityChart data={channelQuality} />
+              </motion.div>
+            )}
+          </SectionLoader>
 
-      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
-        <LandingPagesTable data={data.landingPages} />
-      </motion.div>
+          <SectionLoader loading={loadingMap.landingPages} height="h-48">
+            {landingPages && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+                <LandingPagesTable data={landingPages} />
+              </motion.div>
+            )}
+          </SectionLoader>
 
-      {data.videoEvents.length > 0 && (
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <VideoWidget data={data.videoEvents} />
-        </motion.div>
-      )}
+          <SectionLoader loading={loadingMap.videoEvents} height="h-32">
+            {videoEvents && videoEvents.length > 0 && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <VideoWidget data={videoEvents} />
+              </motion.div>
+            )}
+          </SectionLoader>
 
-      <div className="grid md:grid-cols-2 gap-4">
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
-          <DeviceDonut devices={data.devices} />
-        </motion.div>
-        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-          <GeographyList countries={data.geography} />
-        </motion.div>
-      </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <SectionLoader loading={loadingMap.devices} height="h-48">
+              {devices && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+                  <DeviceDonut devices={devices} />
+                </motion.div>
+              )}
+            </SectionLoader>
+            <SectionLoader loading={loadingMap.geography} height="h-48">
+              {geography && (
+                <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
+                  <GeographyList countries={geography} />
+                </motion.div>
+              )}
+            </SectionLoader>
+          </div>
 
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
-            <HeatmapChart data={data.heatmap} />
-          </motion.div>
+          <SectionLoader loading={loadingMap.heatmap} height="h-48">
+            {heatmap && (
+              <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}>
+                <HeatmapChart data={heatmap} />
+              </motion.div>
+            )}
+          </SectionLoader>
         </>
       )}
     </div>
